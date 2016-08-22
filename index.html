@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Git Graph Visualization</title>
+	<script src="./js/jquery-3.1.0.min.js"></script>
+	<script src="./js/gitgraph.js"></script>
+</head>
+<body>
+	<h1>Git Graph Visualization</h1>
+	<div id="graph"></div>
+	<div id="msg">
+	</div>
+	<pre id="commits"></pre>
+	<pre id="test"></pre>
+<script>
+$(document).ready(function(){
+	$.get("testlog.txt", "", function(file){
+		gitgraph.parseLog(file, $('#commits')[0])
+	}, 'text');
+});
+</script>
+</body>
+</html>
