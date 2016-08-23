@@ -17,8 +17,20 @@ function circle(cx,cy,r,fill,stroke){
 	return c;
 }
 
-function setArrow(a,x0,y0,x1,y1){
-	a.setAttribute("d", "M" + x0 + "," + y0 + "L" + x1 + "," + y1 + "," + (x1 - 5) + "," + (y1 - 5) + "M" + x1 + "," + y1 + "," + (x1 - 5) + "," + (y1 + 5));
+function setArrow(a,child,parent){
+	var str = "M"
+	if(child.x < parent.x)
+		str += (child.x * 20 + 20 + 7) + "," + (child.y) + "L" +
+			(parent.x * 20 + 20 - 5) + "," + child.y + "," +
+			(parent.x * 20 + 20) + "," + (child.y + 5) + ","
+	else if(parent.x < child.x)
+		str += (child.x * 20 + 20 - 7) + "," + (child.y) + "L" +
+			(parent.x * 20 + 20 + 5) + "," + child.y + "," +
+			(parent.x * 20 + 20) + "," + (child.y + 5) + ","
+	else
+		str += (child.x * 20 + 20) + "," + (child.y + 7) + "L"
+	str += (parent.x * 20 + 20) + "," + (parent.y - 7)
+	a.setAttribute("d", str);
 }
 
 
@@ -132,8 +144,7 @@ this.updateSvg = function(svg){
 			if(parenti < 0)
 				continue
 			var a = document.createElementNS(NS,"path");
-			setArrow(a, commit.x * 20 + 20, i * 20 + 20 + 7,
-				parent.x * 20 + 20, parenti * 20 + 20 - 7);
+			setArrow(a, commit, parent);
 			a.style.stroke = "black";
 			a.style.fill = "none";
 			a.style.pointerEvents = "none";
