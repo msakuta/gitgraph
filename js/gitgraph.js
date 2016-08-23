@@ -3,6 +3,7 @@ window.gitgraph = new (function(){
 
 var NS="http://www.w3.org/2000/svg";
 
+var commitMap = {}
 var commits = []
 
 function circle(cx,cy,r,fill,stroke){
@@ -44,6 +45,23 @@ this.parseLog = function(text, commitsElem){
 		commits.push(commitObj)
 		commitsElem.innerHTML += commitStr + '\n'
 	}
+
+	// Cache hash id to object map for quick looking up
+	for(var i = 0; i < commits.length; i++){
+		commitMap[commits[i].hash] = commits[i]
+	}
+
+	// Cache children pointers from parents
+	for(var i = 0; i < commits.length; i++){
+		var parents = commits[i].parents
+		for(var j = 0; j < parents.length; j++){
+			var parent = commitMap[parents[j]]
+			if(parent){
+				parent.children = parent.children || []
+				parent.children.push(commits[i])
+			}
+		}
+	}
 }
 
 function findCommit(hash){
@@ -60,24 +78,44 @@ this.updateSvg = function(svg){
 	var width = parseInt(svg.style.width);
 	var height = parseInt(svg.style.height);
 
+	var columns = []
+
 	for(var i = 0; i < commits.length; i++){
-		if(i === 0)
-			commits[i].x = 20
-		else if(commits[i].parents && 2 <= commits[i].parents.length)
-			commits[i].x = (commits[i-1].x + 20) % (width - 40)
-		else
-			commits[i].x = commits[i-1].x
+		if(!commits[i].x){
+			var commit = commits[i]
+
+			// Clear children
+			var numChildren = commit.children ? commit.children.length : 0
+			for(var k = 0; k < numChildren; k++){
+				for(var j = 0; j < columns.length; j++){
+					if(columns[j] && columns[j] === commit.children[k]){
+						columns[j] = null
+						break
+					}
+				}
+			}
+
+			// Find vacant column 
+			for(var j = 0; j < columns.length; j++){
+				if(!columns[j]){
+					break
+				}
+			}
+			commit.x = j
+			columns[j] = commit
+		}
+		commits[i].y = i * 20 + 20
 	}
 
 	for(var i = 0; i < commits.length; i++){
 		var commit = commits[i]
-		var c = circle(commit.x, i * 20 + 20, 7, '#7f7f7f')
+		var c = circle(commit.x * 20 + 20, commit.y, 7, '#7f7f7f')
 		svg.appendChild(c)
 
 		var t = document.createElementNS(NS,"text");
 		//t.y.baseVal.value = 120;
-		t.setAttribute("x", commit.x + 12);
-		t.setAttribute("y", i * 20 + 20 + 3);
+		t.setAttribute("x", commit.x * 20 + 20 + 12);
+		t.setAttribute("y", commit.y);
 		// Need a CSS with class "noselect" which specify selection disabling style
 		t.setAttribute("class", "noselect");
 		t.style.fontSize = "12px";
@@ -86,22 +124,20 @@ this.updateSvg = function(svg){
 		t.textContent = commit.hash.substr(0,6);
 		svg.appendChild(t);
 
-		if(commit.parents){
-			for(var j = 0; j < commit.parents.length; j++){
-				var parent = findCommit(commit.parents[j])
-				if(!parent)
-					continue
-				var parenti = commits.indexOf(parent)
-				if(parenti < 0)
-					continue
-				var a = document.createElementNS(NS,"path");
-				setArrow(a, commit.x, i * 20 + 20 + 7,
-					parent.x, parenti * 20 + 20 - 7);
-				a.style.stroke = "black";
-				a.style.fill = "none";
-				a.style.pointerEvents = "none";
-				svg.appendChild(a)
-			}
+		for(var j = 0; j < commit.parents.length; j++){
+			var parent = findCommit(commit.parents[j])
+			if(!parent)
+				continue
+			var parenti = commits.indexOf(parent)
+			if(parenti < 0)
+				continue
+			var a = document.createElementNS(NS,"path");
+			setArrow(a, commit.x * 20 + 20, i * 20 + 20 + 7,
+				parent.x * 20 + 20, parenti * 20 + 20 - 7);
+			a.style.stroke = "black";
+			a.style.fill = "none";
+			a.style.pointerEvents = "none";
+			svg.appendChild(a)
 		}
 	}
 	
