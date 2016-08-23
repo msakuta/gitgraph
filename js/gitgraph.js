@@ -96,25 +96,26 @@ this.updateSvg = function(svg){
 		if(!commits[i].x){
 			var commit = commits[i]
 
-			// Clear children
-			var numChildren = commit.children ? commit.children.length : 0
-			for(var k = 0; k < numChildren; k++){
-				for(var j = 0; j < columns.length; j++){
-					if(columns[j] && columns[j] === commit.children[k]){
-						columns[j] = null
-						break
-					}
-				}
-			}
-
-			// Find vacant column 
+			// Find vacant column
 			for(var j = 0; j < columns.length; j++){
-				if(!columns[j]){
+				if(columns[j] === commit){
+					columns[j] = null
 					break
 				}
 			}
 			commit.x = j
-			columns[j] = commit
+
+			// Reserve columns for parents from vacant ones
+			var numParents = commit.parents ? commit.parents.length : 0
+			for(var k = 0; k < numParents; k++){
+				var parent = commitMap[commit.parents[k]]
+				for(var j = 0; j < columns.length; j++){
+					if(!columns[j] || columns[j] === parent){
+						break
+					}
+				}
+				columns[j] = parent
+			}
 		}
 		commits[i].y = i * 20 + 20
 	}
