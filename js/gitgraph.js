@@ -19,33 +19,43 @@ function circle(cx,cy,r,fill,stroke){
 
 function setArrow(a,child,parent){
 	var str = "M"
+	var maxX = child.x * 20 + 30
+	// Accumulate maximum x value
+	function xMax(x){
+		if(maxX < x) maxX = x
+		return x
+	}
 	if(child.x < parent.x)
-		str += (child.x * 20 + 20 + 7) + "," + (child.y) + "L" +
-			(parent.x * 20 + 20 - 5) + "," + child.y + "," +
-			(parent.x * 20 + 20) + "," + (child.y + 5) + ","
+		str += xMax(child.x * 20 + 20 + 7) + "," + (child.y) + "L" +
+			xMax(parent.x * 20 + 20 - 5) + "," + child.y + "," +
+			xMax(parent.x * 20 + 20) + "," + (child.y + 5) + ","
 	else if(parent.x < child.x)
-		str += (child.x * 20 + 20 - 7) + "," + (child.y) + "L" +
-			(parent.x * 20 + 20 + 5) + "," + child.y + "," +
-			(parent.x * 20 + 20) + "," + (child.y + 5) + ","
+		str += xMax(child.x * 20 + 20 - 7) + "," + (child.y) + "L" +
+			xMax(parent.x * 20 + 20 + 5) + "," + child.y + "," +
+			xMax(parent.x * 20 + 20) + "," + (child.y + 5) + ","
 	else
-		str += (child.x * 20 + 20) + "," + (child.y + 7) + "L"
-	str += (parent.x * 20 + 20) + "," + (parent.y - 7)
+		str += xMax(child.x * 20 + 20) + "," + (child.y + 7) + "L"
+	str += xMax(parent.x * 20 + 20) + "," + (parent.y - 7)
 	a.setAttribute("d", str);
+	return maxX
 }
 
 
 /** Parse raw output from `git log --pretty=raw` and format for HTML
  */
 this.parseLog = function(text, commitsElem){
-	var commitStrs = text.match(/^commit [0-9a-f]+\r?\ntree [0-9a-f]+(\r?\nparent [0-9a-f]+)*/mg)
+	var commitStrs = text.match(/^commit [0-9a-f]+\r?\n(.|\r|\n)+?(?=^commit [0-9a-f]+)/mg)
 	if(!commitStrs)
 		return
 	for(var i = 0; i < commitStrs.length; i++){
 		var str = commitStrs[i]
 		var commitStr = str.match(/^commit [0-9a-f]+/)[0]
-		var parentMatch = str.match(/parent [0-9a-f]+/g)
+		var commitHash = commitStr.substr("commit ".length).trim()
+		commitStr = commitHash.substr(0,6)
+		var parentMatch = str.match(/^parent [0-9a-f]+/gm)
 		var commitObj = {
-			hash: commitStr.substr("commit ".length).trim()
+			hash: commitHash,
+			msg: str.match(/^    .+/gm)
 		}
 		if(parentMatch){
 			commitObj.parents = []
@@ -54,8 +64,11 @@ this.parseLog = function(text, commitsElem){
 				commitStr += ' ' + parentMatch[j].substr("parent ".length, 6).trim()
 			}
 		}
+		if(commitObj.msg && 0 < commitObj.msg.length)
+			commitStr += commitObj.msg[0]
 		commits.push(commitObj)
-		commitsElem.innerHTML += commitStr + '\n'
+		commitsElem.innerHTML += '<div style="position: absolute; left: 200px; top:' + (i * 20 + 13)
+			+ 'px">' + commitStr + '</div>'
 	}
 
 	// Cache hash id to object map for quick looking up
@@ -123,19 +136,8 @@ this.updateSvg = function(svg){
 	for(var i = 0; i < commits.length; i++){
 		var commit = commits[i]
 		var c = circle(commit.x * 20 + 20, commit.y, 7, '#7f7f7f')
+		var maxX = 0
 		svg.appendChild(c)
-
-		var t = document.createElementNS(NS,"text");
-		//t.y.baseVal.value = 120;
-		t.setAttribute("x", commit.x * 20 + 20 + 12);
-		t.setAttribute("y", commit.y);
-		// Need a CSS with class "noselect" which specify selection disabling style
-		t.setAttribute("class", "noselect");
-		t.style.fontSize = "12px";
-		t.style.fontFamily = "monospace";
-		t.style.pointerEvents = "none";
-		t.textContent = commit.hash.substr(0,6);
-		svg.appendChild(t);
 
 		for(var j = 0; j < commit.parents.length; j++){
 			var parent = findCommit(commit.parents[j])
@@ -145,12 +147,21 @@ this.updateSvg = function(svg){
 			if(parenti < 0)
 				continue
 			var a = document.createElementNS(NS,"path");
-			setArrow(a, commit, parent);
+			var x = setArrow(a, commit, parent);
 			a.style.stroke = "black";
 			a.style.fill = "none";
 			a.style.pointerEvents = "none";
 			svg.appendChild(a)
+
+			if(maxX < x)
+				maxX = x
 		}
+		var a = document.createElementNS(NS,"path")
+		a.setAttribute("d", "M" + (maxX + 10) + "," + commit.y + "L" + width + "," + commit.y)
+		a.style.stroke = "#7f7f7f";
+		a.style.fill = "none";
+		a.style.pointerEvents = "none";
+		svg.appendChild(a)
 	}
 	
 	svg.style.height = (commits.length * 20 + 40) + 'px'
