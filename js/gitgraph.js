@@ -24,7 +24,7 @@ function setArrow(a,x0,y0,x1,y1){
 /** Parse raw output from `git log --pretty=raw` and format for HTML
  */
 this.parseLog = function(text, commitsElem){
-	var commitStrs = text.match(/^commit [0-9a-f]+\ntree [0-9a-f]+(\nparent [0-9a-f]+)+/mg)
+	var commitStrs = text.match(/^commit [0-9a-f]+\r?\ntree [0-9a-f]+(\r?\nparent [0-9a-f]+)*/mg)
 	if(!commitStrs)
 		return
 	for(var i = 0; i < commitStrs.length; i++){
@@ -32,13 +32,13 @@ this.parseLog = function(text, commitsElem){
 		var commitStr = str.match(/^commit [0-9a-f]+/)[0]
 		var parentMatch = str.match(/parent [0-9a-f]+/g)
 		var commitObj = {
-			hash: commitStr.substr("commit ".length)
+			hash: commitStr.substr("commit ".length).trim()
 		}
 		if(parentMatch){
 			commitObj.parents = []
 			for(var j = 0; j < parentMatch.length; j++){
-				commitObj.parents.push(parentMatch[j].substr("parent ".length))
-				commitStr += ' ' + parentMatch[j].substr("parent ".length, 6)
+				commitObj.parents.push(parentMatch[j].substr("parent ".length).trim())
+				commitStr += ' ' + parentMatch[j].substr("parent ".length, 6).trim()
 			}
 		}
 		commits.push(commitObj)
