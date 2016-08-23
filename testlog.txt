@@ -1,57 +1,58 @@
 commit fae1cabb519dfd1ce99059585853ab1928d72e8f
-Merge: cfd4df6 701a0e4
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Sat Aug 20 20:42:57 2016 +0800
+tree 92e7897fe197ecf666e47d41bfcad489bd41a4e9
+parent cfd4df69880a48ed1c6114c304454ddd5ac14870
+parent 701a0e4ae5e5a79f6eeee5e61be57516b0aaefa0
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1471696977 +0800
+committer GitHub <noreply@github.com> 1471696977 +0800
 
     Merge pull request #73 from mfxmfx/fix-unused-arg-macro
     
     Fix the SQ_UNUSED_ARG() macro so that is works with current gcc version.
 
 commit cfd4df69880a48ed1c6114c304454ddd5ac14870
-Merge: c7a0707 48842f0
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Sat Aug 20 20:39:26 2016 +0800
+tree 2f118175fcf90efb683bc0d65678e2b0dc1ca46d
+parent c7a0707137408e0d611da058cf65b33cd7a3a8e0
+parent 48842f097926e2b0a4c1b1e5cda5dc2368772dad
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1471696766 +0800
+committer GitHub <noreply@github.com> 1471696766 +0800
 
     Merge pull request #70 from dut-lang/issue_69
     
     Fixed code style, remove the warning from gcc
 
 commit c7a0707137408e0d611da058cf65b33cd7a3a8e0
-Merge: bd43d37 eeba56c
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Sat Aug 20 20:38:16 2016 +0800
+tree ff6faeb73506e8799c6fd25c6763e1b42077b8ef
+parent bd43d374dc66f2f1730d066e9a25d1a3db8bfa98
+parent eeba56c81bcbd29c916c35d32947d832dec3383f
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1471696696 +0800
+committer GitHub <noreply@github.com> 1471696696 +0800
 
     Merge pull request #72 from mfxmfx/normalize-whitespace
     
     Normalize whitespace.
 
 commit 701a0e4ae5e5a79f6eeee5e61be57516b0aaefa0
-Author: Markus F.X.J. Oberhumer <markus@oberhumer.com>
-Date:   Fri Aug 19 14:23:13 2016 +0200
+tree 993af5879f446100f3e363f662b77a8cb185ed6c
+parent bd43d374dc66f2f1730d066e9a25d1a3db8bfa98
+author Markus F.X.J. Oberhumer <markus@oberhumer.com> 1471609393 +0200
+committer Markus F.X.J. Oberhumer <markus@oberhumer.com> 1471609393 +0200
 
     Fix the SQ_UNUSED_ARG() macro so that is works with current gcc version.
 
-:100644 100644 f0f3e64... 28d9102... M	include/squirrel.h
  include/squirrel.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit eeba56c81bcbd29c916c35d32947d832dec3383f
-Author: Markus F.X.J. Oberhumer <markus@oberhumer.com>
-Date:   Fri Aug 19 13:40:31 2016 +0200
+tree ff6faeb73506e8799c6fd25c6763e1b42077b8ef
+parent bd43d374dc66f2f1730d066e9a25d1a3db8bfa98
+author Markus F.X.J. Oberhumer <markus@oberhumer.com> 1471606831 +0200
+committer Markus F.X.J. Oberhumer <markus@oberhumer.com> 1471606831 +0200
 
     Normalize whitespace.
     
     Convert source files to Unix EOL mode, convert .bat files to DOS EOL
     mode, de-tabify and strip trailing whitespace.
 
-:100644 100644 f2b3014... e24d36d... M	README
-:100644 100644 19a3a3f... f21e9b3... M	doc/make.bat
-:100644 100644 4323d61... f3f98c0... M	doc/source/reference/language/functions.rst
-:100644 100644 addb037... 19c18d7... M	doc/source/stdlib/stdstringlib.rst
-:100644 100644 84c225a... bbd54b4... M	sqstdlib/sqstdio.cpp
-:100644 100644 38a8508... 228d539... M	sqstdlib/sqstdrex.cpp
-:100644 100644 9e42dba... bce6043... M	sqstdlib/sqstdstring.cpp
-:100644 100644 10afffb... 63c8f97... M	squirrel/sqlexer.cpp
  README                                      |   2 +-
  doc/make.bat                                | 526 ++++++++++++++--------------
  doc/source/reference/language/functions.rst |   4 +-
@@ -63,277 +64,304 @@ Date:   Fri Aug 19 13:40:31 2016 +0200
  8 files changed, 274 insertions(+), 274 deletions(-)
 
 commit 48842f097926e2b0a4c1b1e5cda5dc2368772dad
-Author: Avelino <thiago@avelino.xxx>
-Date:   Wed Aug 17 20:23:08 2016 -0300
+tree 70a2c3aa8f579242c3b1f0fcd382ef2d7126791f
+parent f3bb11ef994006a52f01b69c7972e5b432ed042a
+author Avelino <thiago@avelino.xxx> 1471476188 -0300
+committer Avelino <thiago@avelino.xxx> 1471476188 -0300
 
     fixing indentation error and return object delegate cycle
 
-:100644 100644 72d942c... 3651d0a... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 commit f3bb11ef994006a52f01b69c7972e5b432ed042a
-Author: Avelino <thiago@avelino.xxx>
-Date:   Sat Aug 13 18:01:21 2016 -0300
+tree 9ff5be62136880f91b349f19881688db2eeea94a
+parent 36c308bf57fa5768d2f812a1cdd2cb10357f812f
+author Avelino <thiago@avelino.xxx> 1471122081 -0300
+committer Avelino <thiago@avelino.xxx> 1471122081 -0300
 
     fixed typo, file indentation
 
-:100644 100644 a404c2a... 72d942c... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 commit 36c308bf57fa5768d2f812a1cdd2cb10357f812f
-Author: Avelino <thiago@avelino.xxx>
-Date:   Sat Aug 13 17:45:05 2016 -0300
+tree 75590647b24b862ec6ade6f880b12792af7494d8
+parent bd43d374dc66f2f1730d066e9a25d1a3db8bfa98
+author Avelino <thiago@avelino.xxx> 1471121105 -0300
+committer Avelino <thiago@avelino.xxx> 1471121105 -0300
 
     Fixed code style, remove the warning from gcc
     issue #69
 
-:100644 100644 9c48af9... a404c2a... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 commit bd43d374dc66f2f1730d066e9a25d1a3db8bfa98
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sun Aug 7 01:29:58 2016 +0800
+tree acffd45c2dfaf67167c85ad2a471fed13248ed31
+parent 3019ac3c2c96da24699813d4a0b3914891e0d63f
+author albertodemichelis <alberto@demichelis.net> 1470504598 +0800
+committer albertodemichelis <alberto@demichelis.net> 1470504598 +0800
 
     minor documentation fixes
 
-:100644 100644 7b9683d... c158219... M	doc/source/reference/language/expressions.rst
-:100644 100644 f6e7f14... addb037... M	doc/source/stdlib/stdstringlib.rst
  doc/source/reference/language/expressions.rst | 4 ++--
  doc/source/stdlib/stdstringlib.rst            | 4 ++--
  2 files changed, 4 insertions(+), 4 deletions(-)
 
 commit 3019ac3c2c96da24699813d4a0b3914891e0d63f
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sat Jul 30 19:13:29 2016 +0800
+tree 2e8563e96f3b9ab2ce4f83356c73eb40c803d080
+parent 5e4bcebc6fe85df4d2abe0c8e433894cdbdf076c
+author albertodemichelis <alberto@demichelis.net> 1469877209 +0800
+committer albertodemichelis <alberto@demichelis.net> 1469877209 +0800
 
     fixed VC issue with VC
 
-:100644 100644 49f26b4... f0f3e64... M	include/squirrel.h
  include/squirrel.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 5e4bcebc6fe85df4d2abe0c8e433894cdbdf076c
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sat Jul 30 19:13:05 2016 +0800
+tree 5f90824500fa4b5cff0003502de4e11a32c9e474
+parent 17124aa789e8cf878ef2608015c380d6d17849a4
+author albertodemichelis <alberto@demichelis.net> 1469877185 +0800
+committer albertodemichelis <alberto@demichelis.net> 1469877185 +0800
 
     fixed VC issue with SQ_UNUSED_ARG
 
-:100644 100644 37332a9... 49f26b4... M	include/squirrel.h
  include/squirrel.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 17124aa789e8cf878ef2608015c380d6d17849a4
-Merge: 2ad9683 d1d28aa
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sat Jul 30 19:09:53 2016 +0800
+tree 9a42118fe922472a8016d36837b8f57520da85b8
+parent 2ad9683f54804ff69edad57418d5385c82d43fbc
+parent d1d28aacc9ed4be2929b38924069121c580ecc3f
+author albertodemichelis <alberto@demichelis.net> 1469876993 +0800
+committer albertodemichelis <alberto@demichelis.net> 1469876993 +0800
 
     Merge branch 'master' of https://github.com/albertodemichelis/squirrel
 
 commit 2ad9683f54804ff69edad57418d5385c82d43fbc
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sat Jul 30 19:09:40 2016 +0800
+tree 0f9b7fc521fd9e9157ff9f9802ba3cfcbe6b2a23
+parent 4f20c881ab150290eac28b28ba969638f2cd5cf6
+author albertodemichelis <alberto@demichelis.net> 1469876980 +0800
+committer albertodemichelis <alberto@demichelis.net> 1469876980 +0800
 
     added rawcall
 
-:100644 100644 8a932f9... d9f92bd... M	squirrel/sqcompiler.cpp
-:100644 100644 38c6f4d... e7da642... M	squirrel/sqcompiler.h
-:100644 100644 51158ba... 10afffb... M	squirrel/sqlexer.cpp
  squirrel/sqcompiler.cpp | 7 ++++++-
  squirrel/sqcompiler.h   | 1 +
  squirrel/sqlexer.cpp    | 2 ++
  3 files changed, 9 insertions(+), 1 deletion(-)
 
 commit d1d28aacc9ed4be2929b38924069121c580ecc3f
-Merge: 7629853 15e2c23
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Thu Jul 21 18:14:09 2016 +0800
+tree ca1f3098a375e02480f40583e54e521768319a3f
+parent 76298535860ddfe76b8d8cc5329c4d8b5a1e501d
+parent 15e2c23eea330b385e8c924e4122138674de32fd
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1469096049 +0800
+committer GitHub <noreply@github.com> 1469096049 +0800
 
     Merge pull request #66 from msakuta/master
     
     Minor spelling fix
 
 commit 15e2c23eea330b385e8c924e4122138674de32fd
-Author: msakuta <masahiro.sakuta@gmail.com>
-Date:   Tue Jul 19 16:19:35 2016 -0400
+tree ca1f3098a375e02480f40583e54e521768319a3f
+parent 76298535860ddfe76b8d8cc5329c4d8b5a1e501d
+author msakuta <masahiro.sakuta@gmail.com> 1468959575 -0400
+committer msakuta <masahiro.sakuta@gmail.com> 1468959575 -0400
 
     Minor spelling fix
 
-:100644 100644 c66fc24... 4323d61... M	doc/source/reference/language/functions.rst
  doc/source/reference/language/functions.rst | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 76298535860ddfe76b8d8cc5329c4d8b5a1e501d
-Merge: 7aadf19 e618271
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Thu Jul 14 00:10:25 2016 +0800
+tree c4ac805c5d9e047b97f7964ece7431c7736223a0
+parent 7aadf19f34c7508c48ea0381dbf980dc340c2269
+parent e618271e1102cdec5272d58c653b5020ec1c8d14
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1468426225 +0800
+committer GitHub <noreply@github.com> 1468426225 +0800
 
     Merge pull request #65 from zeromus/master
     
     add mechanism for configuring squirrel by optionally #including a file in squirrel.h
 
 commit e618271e1102cdec5272d58c653b5020ec1c8d14
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Tue Jul 12 18:06:30 2016 -0500
+tree c4ac805c5d9e047b97f7964ece7431c7736223a0
+parent d81f7e1c9d2e9e17d2598be543f5497457d8fccd
+author zeromus <zeromus@users.noreply.github.com> 1468364790 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1468364790 -0500
 
     add mechanism for configuring squirrel by #including _SQ_CONFIG_INCLUDE, if it exists
 
-:100644 100644 d936274... 37332a9... M	include/squirrel.h
  include/squirrel.h | 4 ++++
  1 file changed, 4 insertions(+)
 
 commit d81f7e1c9d2e9e17d2598be543f5497457d8fccd
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sun Jun 26 20:19:51 2016 -0500
+tree c6caacc1d361c0e9b9685e57944069ddf4bb686d
+parent 7aadf19f34c7508c48ea0381dbf980dc340c2269
+author zeromus <zeromus@users.noreply.github.com> 1466990391 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1466990391 -0500
 
     fix typo in sq_writeclosure error message
 
-:100644 100644 419e218... 9c48af9... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 7aadf19f34c7508c48ea0381dbf980dc340c2269
-Merge: f7cf119 ba338b1
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Fri Jun 24 23:50:16 2016 +0800
+tree b0ad7c05d18ad01006a9a6eddd9058539bd077c4
+parent f7cf119db7d119213905cc22168fe532e23a5425
+parent ba338b145cf59339454a88de908e3a07206a2b2d
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1466783416 +0800
+committer GitHub <noreply@github.com> 1466783416 +0800
 
     Merge pull request #63 from zeromus/master
     
     documentation fixups
 
 commit f7cf119db7d119213905cc22168fe532e23a5425
-Merge: a96a2f3 98b5cc4
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Fri Jun 24 23:17:32 2016 +0800
+tree 43fb4904264628d052b9a8e86489c0ec4757b14b
+parent a96a2f3d78eb1d3de74639b9d63e67bad48be855
+parent 98b5cc434d4ccfb1800b716366f52a3bc9cad7af
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1466781452 +0800
+committer GitHub <noreply@github.com> 1466781452 +0800
 
     Merge pull request #61 from zeromus/getinteger-from-bool
     
     support sq_getinteger() for bools
 
 commit a96a2f3d78eb1d3de74639b9d63e67bad48be855
-Merge: 26ef4c4 90cd4bc
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Fri Jun 24 23:16:36 2016 +0800
+tree 91e8e4eb3f57089be9085f69bee602355d95ad19
+parent 26ef4c4f5e046b8760ba800c3549b3871efa6264
+parent 90cd4bc2382554bfa808baca120ad6dc108b9e06
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1466781396 +0800
+committer GitHub <noreply@github.com> 1466781396 +0800
 
     Merge pull request #62 from allenluce/doc1
     
     Documentation cleanup, part one.
 
 commit 90cd4bc2382554bfa808baca120ad6dc108b9e06
-Author: Allen Luce <aluce@adonnetwork.com>
-Date:   Thu Jun 23 14:48:20 2016 -0700
+tree 91e8e4eb3f57089be9085f69bee602355d95ad19
+parent 26ef4c4f5e046b8760ba800c3549b3871efa6264
+author Allen Luce <aluce@adonnetwork.com> 1466718500 -0700
+committer Allen Luce <aluce@adonnetwork.com> 1466720486 -0700
 
     Documentation cleanup, part one.
 
-:100644 100644 348fcb6... bc83447... M	doc/source/reference/introduction.rst
-:100644 100644 4ffc34f... 843ed8b... M	doc/source/reference/language/datatypes.rst
-:100644 100644 05cba40... 72e23f5... M	doc/source/reference/language/lexical_structure.rst
  doc/source/reference/introduction.rst              | 10 +--
  doc/source/reference/language/datatypes.rst        | 79 ++++++++++++----------
  .../reference/language/lexical_structure.rst       | 26 ++++---
  3 files changed, 59 insertions(+), 56 deletions(-)
 
 commit ba338b145cf59339454a88de908e3a07206a2b2d
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Tue Jun 21 19:29:53 2016 -0500
+tree 0c2efbe15ffa018d92e1e458e68326788dc0b80b
+parent 87deb68c46bd027dde3a62eb69aa1531829a6e36
+author zeromus <zeromus@users.noreply.github.com> 1466555393 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1466555393 -0500
 
     remove spurious 'previdx' from _tostring metamethod docs
 
-:100644 100644 cfaaa48... 260b030... M	doc/source/reference/language/metamethods.rst
  doc/source/reference/language/metamethods.rst | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 commit 87deb68c46bd027dde3a62eb69aa1531829a6e36
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Mon Jun 20 01:51:44 2016 -0500
+tree 494a7f6b5ab37a72bded680ee37be733e225b0d1
+parent 457f3b25bc3e29e4b147a7227a9bc95220a18fa9
+author zeromus <zeromus@users.noreply.github.com> 1466405504 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1466405504 -0500
 
     rewrite docs for 'this' argument passing. I found some of the finer points to be confusing (I was led to believe indexing a function off an object would bindenv the object to it, but it doesnt). So I changed the language to 'immediately indexed' and then tried to elaborate that.
 
-:100644 100644 e7a07db... c66fc24... M	doc/source/reference/language/functions.rst
  doc/source/reference/language/functions.rst | 28 ++++++++++++++++++++--------
  1 file changed, 20 insertions(+), 8 deletions(-)
 
 commit 457f3b25bc3e29e4b147a7227a9bc95220a18fa9
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Mon Jun 20 01:07:30 2016 -0500
+tree 79a25466f46a50cccf9a563bb240ba2266c02ba4
+parent 7290b1fffedf9ccc550456ae0fe9ee97649c535b
+author zeromus <zeromus@users.noreply.github.com> 1466402850 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1466402850 -0500
 
     docs fix... all the builtin_functions for `function` were mislabeled as `array`?
 
-:100644 100644 01f02c5... 1da388f... M	doc/source/reference/language/builtin_functions.rst
  doc/source/reference/language/builtin_functions.rst | 20 ++++++++++----------
  1 file changed, 10 insertions(+), 10 deletions(-)
 
 commit 98b5cc434d4ccfb1800b716366f52a3bc9cad7af
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sun Jun 19 18:48:01 2016 -0500
+tree 2e78e44c838571f7997db2d2c7d8d977e096c5f4
+parent 26ef4c4f5e046b8760ba800c3549b3871efa6264
+author zeromus <zeromus@users.noreply.github.com> 1466380081 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1466380126 -0500
 
     support sq_getinteger() for bools (returns SQFalse or SQTrue in the SQInteger). Useful for format("%d",mybool)
 
-:100644 100644 034e7be... 419e218... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 4 ++++
  1 file changed, 4 insertions(+)
 
 commit 7290b1fffedf9ccc550456ae0fe9ee97649c535b
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sat Jun 18 23:41:05 2016 -0500
+tree cca8eac41f5da6e67d3467115a2af3d7d4f0808b
+parent 26ef4c4f5e046b8760ba800c3549b3871efa6264
+author zeromus <zeromus@users.noreply.github.com> 1466311265 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1466369040 -0500
 
     docs & error message tidy
 
-:100644 100644 099fc59... ea00240... M	doc/source/reference/api/object_manipulation.rst
-:100644 100644 57ec785... 01f02c5... M	doc/source/reference/language/builtin_functions.rst
-:100644 100644 8a932f9... 175459c... M	squirrel/sqcompiler.cpp
  doc/source/reference/api/object_manipulation.rst   |  2 +-
  .../reference/language/builtin_functions.rst       | 43 +++++++++++-----------
  squirrel/sqcompiler.cpp                            |  4 +-
  3 files changed, 24 insertions(+), 25 deletions(-)
 
 commit 26ef4c4f5e046b8760ba800c3549b3871efa6264
-Merge: 2d509d3 2e346b5
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Wed Jun 15 15:04:47 2016 +0800
+tree a4954e9fba89fb966ef350a35305f4e9cc157f0c
+parent 2d509d385bfccadca4b83e3f0319fc526a836a5b
+parent 2e346b54acf51fbe183258c8dcbe850c6ccc292e
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1465974287 +0800
+committer GitHub <noreply@github.com> 1465974287 +0800
 
     Merge pull request #54 from Dwachs/no_warning_unused
     
     FIX: no warnings on unused arguments on non-gnu compilers
 
 commit 2d509d385bfccadca4b83e3f0319fc526a836a5b
-Merge: 4f20c88 3b217e7
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Wed Jun 15 15:03:20 2016 +0800
+tree d573262a15d72ce5c65767e790d1e1bc0f402116
+parent 4f20c881ab150290eac28b28ba969638f2cd5cf6
+parent 3b217e7e428eedf5b019bfab21362e7a99b0fabf
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1465974200 +0800
+committer GitHub <noreply@github.com> 1465974200 +0800
 
     Merge pull request #57 from zeromus/master
     
     docs fixups
 
 commit 3b217e7e428eedf5b019bfab21362e7a99b0fabf
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Tue Jun 14 13:09:53 2016 -0500
+tree d573262a15d72ce5c65767e790d1e1bc0f402116
+parent 3c4098da84e4cbdb6591fd8d48b0f16bc1ccba3b
+author zeromus <zeromus@users.noreply.github.com> 1465927793 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1465927793 -0500
 
     fix getstackinfos docs
 
-:100644 100644 2c344e5... 57ec785... M	doc/source/reference/language/builtin_functions.rst
  doc/source/reference/language/builtin_functions.rst | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 3c4098da84e4cbdb6591fd8d48b0f16bc1ccba3b
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Mon Jun 13 17:20:11 2016 -0500
+tree fe96c747f5a7d079f7f98194f906c79106ec7135
+parent 997c7aefd24e674848ebad7a9f99503e385a5552
+author zeromus <zeromus@users.noreply.github.com> 1465856411 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1465867172 -0500
 
     small docs fixes. small typo fixes in sqapi.cpp error messages
 
-:100644 100644 4d5288d... 099fc59... M	doc/source/reference/api/object_manipulation.rst
-:100644 100644 7637f5b... 81ee4c4... M	doc/source/reference/language/classes.rst
-:100644 100644 4dc2a82... 034e7be... M	squirrel/sqapi.cpp
  doc/source/reference/api/object_manipulation.rst | 6 +++---
  doc/source/reference/language/classes.rst        | 4 ++--
  squirrel/sqapi.cpp                               | 6 +++---
  3 files changed, 8 insertions(+), 8 deletions(-)
 
 commit 997c7aefd24e674848ebad7a9f99503e385a5552
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sat Jun 11 16:48:22 2016 -0500
+tree 4cfe2b506de3efc66791fc0e63c90381686bb222
+parent 09c4e7a8c1e0c952110e2032d9304b0e1b8183d6
+author zeromus <zeromus@users.noreply.github.com> 1465681702 -0500
+committer GitHub <noreply@github.com> 1465681702 -0500
 
     Update sqapi.cpp
     
@@ -343,20 +371,17 @@ Date:   Sat Jun 11 16:48:22 2016 -0500
     
     the docs say: "the function pops all the parameters and leave the closure in the stack"
 
-:100644 100644 c5a70d6... 4dc2a82... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 2e346b54acf51fbe183258c8dcbe850c6ccc292e
-Author: Dwachs <dwachs@gmx.net>
-Date:   Wed Jun 8 21:08:38 2016 +0200
+tree f44246b1ccfe4cbde5d27107470c1de72fdafa1c
+parent 4f20c881ab150290eac28b28ba969638f2cd5cf6
+author Dwachs <dwachs@gmx.net> 1465412918 +0200
+committer Dwachs <dwachs@gmx.net> 1465412918 +0200
 
     FIX: no warnings on unused arguments on non-gnu compilers
 
-:100644 100644 830a587... d936274... M	include/squirrel.h
-:100644 100644 3673293... ee5eabb... M	sq/sq.c
-:100644 100644 ec64b3d... 81e66a2... M	squirrel/sqclass.cpp
-:100644 100644 2711306... 8ad74b0... M	squirrel/sqstate.cpp
  include/squirrel.h   | 2 +-
  sq/sq.c              | 1 -
  squirrel/sqclass.cpp | 2 +-
@@ -364,177 +389,193 @@ Date:   Wed Jun 8 21:08:38 2016 +0200
  4 files changed, 3 insertions(+), 4 deletions(-)
 
 commit 09c4e7a8c1e0c952110e2032d9304b0e1b8183d6
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Thu May 12 11:22:41 2016 -0500
+tree 87a1673c302dde06d698fc5584b6841b326ea26c
+parent 4f20c881ab150290eac28b28ba969638f2cd5cf6
+author zeromus <zeromus@users.noreply.github.com> 1463070161 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1464913461 -0500
 
     fix docs for 'unsigned right shift operator' to reference >>> instead of <<< ! also minor tidying in same file
 
-:100644 100644 d84367a... 7b9683d... M	doc/source/reference/language/expressions.rst
  doc/source/reference/language/expressions.rst | 12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 commit 4f20c881ab150290eac28b28ba969638f2cd5cf6
-Merge: f441f7f 7c0550b
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Mon May 16 01:45:37 2016 +0800
+tree 1f1b7dbc0eba72b01c4b1c76a2f628f0cd8f7ed0
+parent f441f7f99d249ed9f2f949dfcd3493c619e628ce
+parent 7c0550b8adac7b00f9a51a72efd593f67eec7c12
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1463334337 +0800
+committer Alberto Demichelis <albertodemichelis@hotmail.com> 1463334337 +0800
 
     Merge pull request #47 from zeromus/printf
     
     feature: add a printf function to the string stdlib
 
 commit f441f7f99d249ed9f2f949dfcd3493c619e628ce
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Mon May 16 01:44:13 2016 +0800
+tree 5cb0f9c845d7a9e6df1ba2cd4c0722425a3ed8fb
+parent 8ca802658c4f2add335110a5991e1cf9d0985205
+author albertodemichelis <alberto@demichelis.net> 1463334253 +0800
+committer albertodemichelis <alberto@demichelis.net> 1463334253 +0800
 
     small fix in sq_getstringandsize
 
-:100644 100644 a304f6e... c5a70d6... M	squirrel/sqapi.cpp
  squirrel/sqapi.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 8ca802658c4f2add335110a5991e1cf9d0985205
-Merge: 16ab1fd 9004743
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Mon May 16 01:42:00 2016 +0800
+tree 18ee72490181a23b6b27b426171aabd39eb6ad3f
+parent 16ab1fd6c0d9a528c6a6665eae6a8d9c123d1a2b
+parent 9004743fc43d7cfc133aa20a575bf961b2068429
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1463334120 +0800
+committer Alberto Demichelis <albertodemichelis@hotmail.com> 1463334120 +0800
 
     Merge pull request #45 from zeromus/pstring
     
     feature: sq_getstringandsize()
 
 commit 9004743fc43d7cfc133aa20a575bf961b2068429
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sun May 15 01:00:47 2016 -0500
+tree 18ee72490181a23b6b27b426171aabd39eb6ad3f
+parent 0961039dd7d7ada57c8db649ab91ac37157834d4
+author zeromus <zeromus@users.noreply.github.com> 1463292047 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1463292047 -0500
 
     docs for sq_getstringandssize
 
-:100644 100644 bc9bdad... 9cc60d2... M	doc/source/reference/api/object_creation_and_handling.rst
-:100644 100644 5355e8f... 9c5f9ae... M	doc/source/reference/embedding/the_stack.rst
  doc/source/reference/api/object_creation_and_handling.rst | 15 +++++++++++++++
  doc/source/reference/embedding/the_stack.rst              |  1 +
  2 files changed, 16 insertions(+)
 
 commit 0961039dd7d7ada57c8db649ab91ac37157834d4
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sun May 15 00:53:11 2016 -0500
+tree 50a17ec7945f508185e952c1b07d5c2383c3ea2a
+parent 656c6a0d68362a1f62935924496ce291bf41a96b
+author zeromus <zeromus@users.noreply.github.com> 1463291591 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1463291591 -0500
 
     change sq_getpstring to sq_getstringandsize
 
-:100644 100644 4034fc1... 830a587... M	include/squirrel.h
-:100644 100644 489e95f... a304f6e... M	squirrel/sqapi.cpp
  include/squirrel.h | 8 +-------
  squirrel/sqapi.cpp | 6 +++---
  2 files changed, 4 insertions(+), 10 deletions(-)
 
 commit 7c0550b8adac7b00f9a51a72efd593f67eec7c12
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Sun May 15 00:30:15 2016 -0500
+tree 972d58b1b5b33910442b4763197dd3a170bd1775
+parent e0f0e180a37d248816136cfb5d6161dcca441885
+author zeromus <zeromus@users.noreply.github.com> 1463290215 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1463290215 -0500
 
     printf docs and other small docs tidies
 
-:100644 100644 49d46ec... 2c344e5... M	doc/source/reference/language/builtin_functions.rst
-:100644 100644 f1f7dfc... f6e7f14... M	doc/source/stdlib/stdstringlib.rst
  doc/source/reference/language/builtin_functions.rst |  4 ++--
  doc/source/stdlib/stdstringlib.rst                  | 12 ++++++++++--
  2 files changed, 12 insertions(+), 4 deletions(-)
 
 commit e0f0e180a37d248816136cfb5d6161dcca441885
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Thu May 12 11:46:04 2016 -0500
+tree 83164507e8f821c769ba068ed8d887457135368c
+parent 16ab1fd6c0d9a528c6a6665eae6a8d9c123d1a2b
+author zeromus <zeromus@users.noreply.github.com> 1463071564 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1463071732 -0500
 
     add a printf function to the string stdlib, so we can avoid having to write print(format( all the time. it should be a little more lean than writing that function in lua yourself (can work entirely from scratchpad this way).
 
-:100644 100644 5b8074b... 9e42dba... M	sqstdlib/sqstdstring.cpp
  sqstdlib/sqstdstring.cpp | 14 ++++++++++++++
  1 file changed, 14 insertions(+)
 
 commit 656c6a0d68362a1f62935924496ce291bf41a96b
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Tue May 10 20:56:46 2016 -0500
+tree 25fef573844e62fa3e483a676f16125da8efa92a
+parent 16ab1fd6c0d9a528c6a6665eae6a8d9c123d1a2b
+author zeromus <zeromus@users.noreply.github.com> 1462931806 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1462931806 -0500
 
     add SQPString and sq_getpstring() - an easy way to retrieve strings along with their size, to avoid useless strlens later. it's named PString to suggest that it's like a pascal-style PSTring, prefixed with the length--that's basically what it is.
 
-:100644 100644 221a0ae... 4034fc1... M	include/squirrel.h
-:100644 100644 d7b49eb... 489e95f... M	squirrel/sqapi.cpp
  include/squirrel.h | 7 +++++++
  squirrel/sqapi.cpp | 9 +++++++++
  2 files changed, 16 insertions(+)
 
 commit 16ab1fd6c0d9a528c6a6665eae6a8d9c123d1a2b
-Merge: 2aef08d f87cd11
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sat May 7 02:38:55 2016 +0800
+tree 09a1900021f868b023b59913bb0ec209f4d2ea5f
+parent 2aef08d0a503cbfade36c6a573f4b7fdf6bdbce0
+parent f87cd114d79d78e5c5dcbce661ae030b08fc6166
+author albertodemichelis <alberto@demichelis.net> 1462559935 +0800
+committer albertodemichelis <alberto@demichelis.net> 1462559935 +0800
 
     Merge branch 'master' of https://github.com/albertodemichelis/squirrel
 
 commit 2aef08d0a503cbfade36c6a573f4b7fdf6bdbce0
-Author: albertodemichelis <alberto@demichelis.net>
-Date:   Sat May 7 02:38:41 2016 +0800
+tree 018e7e5c49bff61ae4362ce5e015338d9d6cda3c
+parent 8242f5ac06d35655e98959417c8a98671adfa07b
+author albertodemichelis <alberto@demichelis.net> 1462559921 +0800
+committer albertodemichelis <alberto@demichelis.net> 1462559921 +0800
 
     fixed fallback set
     removed some cruft
 
-:100644 100644 c6a5cf7... 2711306... M	squirrel/sqstate.cpp
-:100644 100644 1dc8c3e... 4d3431d... M	squirrel/sqvm.cpp
  squirrel/sqstate.cpp | 52 +++++++++++++++++++++-------------------------------
  squirrel/sqvm.cpp    |  3 +--
  2 files changed, 22 insertions(+), 33 deletions(-)
 
 commit f87cd114d79d78e5c5dcbce661ae030b08fc6166
-Merge: 8242f5a 7bb5dd4
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Fri May 6 16:10:47 2016 +0800
+tree 74e7f9d1916144099b41ee417bae3930d6bd300d
+parent 8242f5ac06d35655e98959417c8a98671adfa07b
+parent 7bb5dd4982882479e08acf94b1afa37bea0d7070
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1462522247 +0800
+committer Alberto Demichelis <albertodemichelis@hotmail.com> 1462522247 +0800
 
     Merge pull request #43 from zeromus/master
     
     Tidy sqvm.h and docs fixes
 
 commit 7bb5dd4982882479e08acf94b1afa37bea0d7070
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Thu May 5 10:23:44 2016 -0500
+tree 74e7f9d1916144099b41ee417bae3930d6bd300d
+parent 5b50a56e562b8bbd7d1d6ca3b824c55c33b8d17b
+author zeromus <zeromus@users.noreply.github.com> 1462461824 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1462461835 -0500
 
     move TARGET and STK to sqvm.cpp instead of SQ to reduce probability of collisions in case inner headers are included
 
-:100644 100644 1dc8c3e... 087daf0... M	squirrel/sqvm.cpp
-:100644 100644 2138fb3... 35fef5b... M	squirrel/sqvm.h
  squirrel/sqvm.cpp | 2 ++
  squirrel/sqvm.h   | 3 ---
  2 files changed, 2 insertions(+), 3 deletions(-)
 
 commit 5b50a56e562b8bbd7d1d6ca3b824c55c33b8d17b
-Author: zeromus <zeromus@users.noreply.github.com>
-Date:   Tue May 3 12:33:31 2016 -0500
+tree 338c4c854043526529a5bb1df8b8e53aa0ce4c4f
+parent 8242f5ac06d35655e98959417c8a98671adfa07b
+author zeromus <zeromus@users.noreply.github.com> 1462296811 -0500
+committer zeromus <zeromus@users.noreply.github.com> 1462461835 -0500
 
     docs fixes and formatting
 
-:100644 100644 60cfb8d... 4d5288d... M	doc/source/reference/api/object_manipulation.rst
-:100644 100644 d98822e... cfaaa48... M	doc/source/reference/language/metamethods.rst
  doc/source/reference/api/object_manipulation.rst | 14 +++++------
  doc/source/reference/language/metamethods.rst    | 30 ++++++++++++------------
  2 files changed, 22 insertions(+), 22 deletions(-)
 
 commit 8242f5ac06d35655e98959417c8a98671adfa07b
-Merge: 70afcee 692d495
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Thu Apr 28 16:59:05 2016 +0800
+tree 3718b75c705de803ef4b6f03fba2619d22439a5e
+parent 70afceec42bc17aabe8f097a999225492cf45f47
+parent 692d4958e8005fff5b909cce92541969c77730d1
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1461833945 +0800
+committer Alberto Demichelis <albertodemichelis@hotmail.com> 1461833945 +0800
 
     Merge pull request #40 from iSLC/master
     
     Remove empty statement.
 
 commit 692d4958e8005fff5b909cce92541969c77730d1
-Author: Sandu Liviu Catalin <slc.universe@gmail.com>
-Date:   Thu Apr 28 00:06:57 2016 +0300
+tree 3718b75c705de803ef4b6f03fba2619d22439a5e
+parent 70afceec42bc17aabe8f097a999225492cf45f47
+author Sandu Liviu Catalin <slc.universe@gmail.com> 1461791217 +0300
+committer Sandu Liviu Catalin <slc.universe@gmail.com> 1461791217 +0300
 
     Remove empty statement.
 
-:100644 100644 f1addd1... 1dc8c3e... M	squirrel/sqvm.cpp
  squirrel/sqvm.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 commit 70afceec42bc17aabe8f097a999225492cf45f47
-Merge: 35ab252 301db64
-Author: Alberto Demichelis <albertodemichelis@hotmail.com>
-Date:   Mon Apr 25 15:51:02 2016 +0800
+tree b29c96acc2469318e4ebe6f880122a6a4c2c42e3
+parent 35ab252494f577ffed411d66157519cdf7524d17
+parent 301db648daf4d39ee8375e75335a4539fb1baf48
+author Alberto Demichelis <albertodemichelis@hotmail.com> 1461570662 +0800
+committer Alberto Demichelis <albertodemichelis@hotmail.com> 1461570662 +0800
 
     Merge pull request #39 from zeromus/master
     
