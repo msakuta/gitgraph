@@ -73,6 +73,19 @@ this.updateSvg = function(svg){
 		var commit = commits[i]
 		var c = circle(commit.x, i * 20 + 20, 7, '#7f7f7f')
 		svg.appendChild(c)
+
+		var t = document.createElementNS(NS,"text");
+		//t.y.baseVal.value = 120;
+		t.setAttribute("x", commit.x + 12);
+		t.setAttribute("y", i * 20 + 20 + 3);
+		// Need a CSS with class "noselect" which specify selection disabling style
+		t.setAttribute("class", "noselect");
+		t.style.fontSize = "12px";
+		t.style.fontFamily = "monospace";
+		t.style.pointerEvents = "none";
+		t.textContent = commit.hash.substr(0,6);
+		svg.appendChild(t);
+
 		if(commit.parents){
 			for(var j = 0; j < commit.parents.length; j++){
 				var parent = findCommit(commit.parents[j])
