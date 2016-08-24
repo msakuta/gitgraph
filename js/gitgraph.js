@@ -1,6 +1,11 @@
 window.gitgraph = new (function(){
 'use strict'
 
+// Polyfill almost only for IE
+Math.log10 = Math.log10 || function(x){
+	return Math.log(x) / Math.LN10
+}
+
 var NS="http://www.w3.org/2000/svg";
 
 var commitMap = {}
@@ -112,8 +117,8 @@ this.parseLog = function(text, commitsElem){
 				var re = /^(\d+)\t(\d+)\t(.+)/.exec(statMatch[j])
 				// Ignore binary files for now
 				if(re && re[1] !== '-' && re[2] !== '-'){
-					commitObj.stat.add += Number.parseInt(re[1])
-					commitObj.stat.del += Number.parseInt(re[2])
+					commitObj.stat.add += parseInt(re[1])
+					commitObj.stat.del += parseInt(re[2])
 					commitObj.stat.files.push({add: re[1], del: re[2], file: re[3]})
 				}
 			}
