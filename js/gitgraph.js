@@ -6,15 +6,54 @@ var NS="http://www.w3.org/2000/svg";
 var commitMap = {}
 var commits = []
 
-function circle(cx,cy,r,fill,stroke){
+/** Creates and returns circle element as a SVG element.
+ *
+ * @param {number} cx   X coordinate of center point.
+ * @param {number} cy   Y coordinate of center point.
+ * @param {number} r   Radius of the circle.
+ * @param {string=} fill   Fill style of the circle. Default is "white".
+ * @param {string=} stroke   Stroke style of the circle. Default is "black".
+ * @param {string=} width   strokeWidth style of the circle. Default is "1".
+ * @return {Element} the SVG element.
+ */
+function circle(cx,cy,r,fill,stroke,width){
 	var c = document.createElementNS(NS,"circle");
 	c.cx.baseVal.value = cx;
 	c.cy.baseVal.value = cy;
 	c.r.baseVal.value = r;
 	c.style.stroke = stroke || "black";
-	c.style.strokeWidth = "1";
+	c.style.strokeWidth = width || "1";
 	c.style.fill = fill || "white";
 	return c;
+}
+
+/** Creates and returns arc element as a SVG element.
+ *
+ * Since arcs in SVG paths are not straightforward to define,
+ * we want a concise function to create an arc, just as simple
+ * as creating a circle.
+ *
+ * @param {number} cx   X coordinate of center point.
+ * @param {number} cy   Y coordinate of center point.
+ * @param {number} r   Radius of the arc.
+ * @param {number} start  Starting angle, in radians, from Y+ axis
+ *        in counterclockwise.
+ * @param {number} end   Ending angle, in radians, same definition
+ *        as start.
+ * @param {string} stroke  Stroke style of the path.
+ * @return {Element} the SVG element.
+ */
+function arc(cx,cy,r,start,end,stroke){
+	var a = document.createElementNS(NS,"path")
+	var startPoint = [cx + r * Math.sin(start), cy - r * Math.cos(start)]
+	var endPoint = [cx + r * Math.sin(end), cy - r * Math.cos(end)]
+	a.setAttribute('d', "M" + startPoint[0] + " " + startPoint[1] +
+		"A" + r + " " + r + " 0 0 1 " +
+		endPoint[0] + " " + endPoint[1])
+	a.style.stroke = stroke
+	a.style.strokeWidth = "4"
+	a.style.fill = "none"
+	return a
 }
 
 function setArrow(a,child,parent){
@@ -153,9 +192,19 @@ this.updateSvg = function(svg){
 
 	for(var i = 0; i < commits.length; i++){
 		var commit = commits[i]
-		var c = circle(commit.x * 20 + 20, commit.y, 7, '#7f7f7f')
+		var rad = commit.stat ? 6 : 7
+		var c = circle(commit.x * 20 + 20, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
 		var maxX = 0
 		svg.appendChild(c)
+
+		if(commit.stat){
+			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.add + 1) + 0) * Math.PI / 5)
+			var addArc = arc(commit.x * 20 + 20, commit.y, rad, 0, addAngle, 'green')
+			svg.appendChild(addArc)
+			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.del + 1) + 0) * Math.PI / 5)
+			var delArc = arc(commit.x * 20 + 20, commit.y, rad, delAngle, 0, 'red')
+			svg.appendChild(delArc)
+		}
 
 		for(var j = 0; j < commit.parents.length; j++){
 			var parent = findCommit(commit.parents[j])
