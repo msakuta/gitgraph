@@ -168,6 +168,8 @@ this.updateSvg = function(svg){
 	var height = parseInt(svg.style.height);
 
 	var columns = []
+	var colors = ['#7f0000', '#007f00', '#0000af', '#000000',
+		'#7f7f00', '#7f007f', '#007f7f']
 
 	for(var i = 0; i < commits.length; i++){
 		if(!commits[i].x){
@@ -207,21 +209,11 @@ this.updateSvg = function(svg){
 		svg.appendChild(bg)
 	}
 
+	var colorIdx = 0
 	for(var i = 0; i < commits.length; i++){
 		var commit = commits[i]
 		var rad = commit.stat ? 6 : 7
-		var c = circle(commit.x * 20 + 20, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
 		var maxX = 0
-		svg.appendChild(c)
-
-		if(commit.stat){
-			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.add + 1) + 0) * Math.PI / 5)
-			var addArc = arc(commit.x * 20 + 20, commit.y, rad, 0, addAngle, 'green')
-			svg.appendChild(addArc)
-			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.del + 1) + 0) * Math.PI / 5)
-			var delArc = arc(commit.x * 20 + 20, commit.y, rad, delAngle, 0, 'red')
-			svg.appendChild(delArc)
-		}
 
 		for(var j = 0; j < commit.parents.length; j++){
 			var parent = findCommit(commit.parents[j])
@@ -232,7 +224,12 @@ this.updateSvg = function(svg){
 				continue
 			var a = document.createElementNS(NS,"path");
 			var x = setArrow(a, commit, parent);
-			a.style.stroke = "black";
+			a.style.stroke = colors[colorIdx];
+			// Try to keep the same color as long as the history is linear.
+			// Otherwise, cycle colors.
+			if(j !== 0 || parent.x !== commit.x)
+				colorIdx = (colorIdx + 1) % colors.length
+			a.style.strokeWidth = "2"
 			a.style.fill = "none";
 			a.style.pointerEvents = "none";
 			svg.appendChild(a)
@@ -240,6 +237,20 @@ this.updateSvg = function(svg){
 			if(maxX < x)
 				maxX = x
 		}
+
+		// Add the commit marker circle after the connection lines, to make sure
+		// the marker is painted on top of the lines.
+		var c = circle(commit.x * 20 + 20, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
+		svg.appendChild(c)
+		if(commit.stat){
+			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.add + 1) + 0) * Math.PI / 5)
+			var addArc = arc(commit.x * 20 + 20, commit.y, rad, 0, addAngle, 'green')
+			svg.appendChild(addArc)
+			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.del + 1) + 0) * Math.PI / 5)
+			var delArc = arc(commit.x * 20 + 20, commit.y, rad, delAngle, 0, 'red')
+			svg.appendChild(delArc)
+		}
+
 	}
 	
 	svg.style.height = (commits.length * 20 + 40) + 'px'
