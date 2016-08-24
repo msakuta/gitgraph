@@ -41,7 +41,7 @@ function setArrow(a,child,parent){
 }
 
 
-/** Parse raw output from `git log --pretty=raw` and format for HTML
+/** Parse raw output from `git log --pretty=raw --numstat` and format for HTML
  */
 this.parseLog = function(text, commitsElem){
 	var commitStrs = text.match(/^commit [0-9a-f]+\r?\n(.|\r|\n)+?(?=^commit [0-9a-f]+)/mg)
@@ -64,6 +64,24 @@ this.parseLog = function(text, commitsElem){
 				commitStr += ' ' + parentMatch[j].substr("parent ".length, 6).trim()
 			}
 		}
+
+		// Check added/deleted lines
+		var statMatch = str.match(/^\d+\t\d+\t.+/gm)
+		if(statMatch){
+			commitObj.stat = {add: 0, del: 0, files: []}
+			for(var j = 0; j < statMatch.length; j++){
+				var re = /^(\d+)\t(\d+)\t(.+)/.exec(statMatch[j])
+				// Ignore binary files for now
+				if(re && re[1] !== '-' && re[2] !== '-'){
+					commitObj.stat.add += Number.parseInt(re[1])
+					commitObj.stat.del += Number.parseInt(re[2])
+					commitObj.stat.files.push({add: re[1], del: re[2], file: re[3]})
+				}
+			}
+			commitStr += ' <span style="color:green">+' + commitObj.stat.add + '</span> ' +
+				'<span style="color:red">-' + commitObj.stat.del + '</span>'
+		}
+
 		if(commitObj.msg && 0 < commitObj.msg.length)
 			commitStr += commitObj.msg[0]
 		commits.push(commitObj)
