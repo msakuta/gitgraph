@@ -8,6 +8,11 @@ Math.log10 = Math.log10 || function(x){
 
 var NS="http://www.w3.org/2000/svg";
 
+var columnOffset = 20
+var columnWidth = 15
+var rowOffset = 10
+var rowHeight = 20
+
 var commitMap = {}
 var commits = []
 
@@ -63,23 +68,23 @@ function arc(cx,cy,r,start,end,stroke){
 
 function setArrow(a,child,parent){
 	var str = "M"
-	var maxX = child.x * 20 + 30
+	var maxX = (child.x + 1.5) * columnWidth
 	// Accumulate maximum x value
 	function xMax(x){
 		if(maxX < x) maxX = x
 		return x
 	}
 	if(child.x < parent.x)
-		str += xMax(child.x * 20 + 20 + 7) + "," + (child.y) + "L" +
-			xMax(parent.x * 20 + 20 - 5) + "," + child.y + "," +
-			xMax(parent.x * 20 + 20) + "," + (child.y + 5) + ","
+		str += xMax(child.x * columnWidth + columnOffset + 7) + "," + (child.y) + "L" +
+			xMax(parent.x * columnWidth + columnOffset - 5) + "," + child.y + "," +
+			xMax(parent.x * columnWidth + columnOffset) + "," + (child.y + 5) + ","
 	else if(parent.x < child.x)
-		str += xMax(child.x * 20 + 20 - 7) + "," + (child.y) + "L" +
-			xMax(parent.x * 20 + 20 + 5) + "," + child.y + "," +
-			xMax(parent.x * 20 + 20) + "," + (child.y + 5) + ","
+		str += xMax(child.x * columnWidth + columnOffset - 7) + "," + (child.y) + "L" +
+			xMax(parent.x * columnWidth + columnOffset + 5) + "," + child.y + "," +
+			xMax(parent.x * columnWidth + columnOffset) + "," + (child.y + 5) + ","
 	else
-		str += xMax(child.x * 20 + 20) + "," + (child.y + 7) + "L"
-	str += xMax(parent.x * 20 + 20) + "," + (parent.y - 7)
+		str += xMax(child.x * columnWidth + columnOffset) + "," + (child.y + 7) + "L"
+	str += xMax(parent.x * columnWidth + columnOffset) + "," + (parent.y - 7)
 	a.setAttribute("d", str);
 	return maxX
 }
@@ -130,8 +135,8 @@ this.parseLog = function(text, commitsElem){
 			commitStr += commitObj.msg[0]
 		commits.push(commitObj)
 		commitsElem.innerHTML += '<div class="' + (i % 2 === 0 ? 'light' : 'dark') +
-			'" style="position: absolute; left: 200px; top:' + (i * 20 + 10) +
-			'px; width: 100%; height: 20px"><span class="valign">' +
+			'" style="position: absolute; left: 200px; top:' + (i * rowHeight - rowHeight / 2 + rowOffset) +
+			'px; width: 100%; height: ' + rowHeight + 'px"><span class="valign">' +
 			commitStr + '</span></div>'
 	}
 
@@ -196,15 +201,15 @@ this.updateSvg = function(svg){
 				columns[j] = parent
 			}
 		}
-		commits[i].y = i * 20 + 20
+		commits[i].y = i * rowHeight + rowOffset
 	}
 
 	for(var i = 0; i < commits.length; i++){
 		var bg = document.createElementNS(NS,"rect")
 		bg.setAttribute('x', 0)
-		bg.setAttribute('y', i * 20 + 10)
+		bg.setAttribute('y', i * rowHeight - rowHeight / 2 + rowOffset)
 		bg.setAttribute('width', width)
-		bg.setAttribute('height', 20)
+		bg.setAttribute('height', rowHeight)
 		bg.setAttribute('class', i % 2 === 0 ? 'lightFill' : 'darkFill')
 		svg.appendChild(bg)
 	}
@@ -240,20 +245,20 @@ this.updateSvg = function(svg){
 
 		// Add the commit marker circle after the connection lines, to make sure
 		// the marker is painted on top of the lines.
-		var c = circle(commit.x * 20 + 20, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
+		var c = circle(commit.x * columnWidth + columnOffset, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
 		svg.appendChild(c)
 		if(commit.stat){
 			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.add + 1) + 0) * Math.PI / 5)
-			var addArc = arc(commit.x * 20 + 20, commit.y, rad, 0, addAngle, 'green')
+			var addArc = arc(commit.x * columnWidth + columnOffset, commit.y, rad, 0, addAngle, 'green')
 			svg.appendChild(addArc)
 			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.del + 1) + 0) * Math.PI / 5)
-			var delArc = arc(commit.x * 20 + 20, commit.y, rad, delAngle, 0, 'red')
+			var delArc = arc(commit.x * columnWidth + columnOffset, commit.y, rad, delAngle, 0, 'red')
 			svg.appendChild(delArc)
 		}
 
 	}
 	
-	svg.style.height = (commits.length * 20 + 40) + 'px'
+	svg.style.height = ((commits.length) * rowHeight + rowOffset) + 'px'
 }
 
 
