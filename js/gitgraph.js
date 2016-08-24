@@ -129,8 +129,10 @@ this.parseLog = function(text, commitsElem){
 		if(commitObj.msg && 0 < commitObj.msg.length)
 			commitStr += commitObj.msg[0]
 		commits.push(commitObj)
-		commitsElem.innerHTML += '<div style="position: absolute; left: 200px; top:' + (i * 20 + 13)
-			+ 'px">' + commitStr + '</div>'
+		commitsElem.innerHTML += '<div class="' + (i % 2 === 0 ? 'light' : 'dark') +
+			'" style="position: absolute; left: 200px; top:' + (i * 20 + 10) +
+			'px; width: 100%; height: 20px"><span class="valign">' +
+			commitStr + '</span></div>'
 	}
 
 	// Cache hash id to object map for quick looking up
@@ -196,6 +198,16 @@ this.updateSvg = function(svg){
 	}
 
 	for(var i = 0; i < commits.length; i++){
+		var bg = document.createElementNS(NS,"rect")
+		bg.setAttribute('x', 0)
+		bg.setAttribute('y', i * 20 + 10)
+		bg.setAttribute('width', width)
+		bg.setAttribute('height', 20)
+		bg.setAttribute('class', i % 2 === 0 ? 'lightFill' : 'darkFill')
+		svg.appendChild(bg)
+	}
+
+	for(var i = 0; i < commits.length; i++){
 		var commit = commits[i]
 		var rad = commit.stat ? 6 : 7
 		var c = circle(commit.x * 20 + 20, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
@@ -228,12 +240,6 @@ this.updateSvg = function(svg){
 			if(maxX < x)
 				maxX = x
 		}
-		var a = document.createElementNS(NS,"path")
-		a.setAttribute("d", "M" + (maxX + 10) + "," + commit.y + "L" + width + "," + commit.y)
-		a.style.stroke = "#7f7f7f";
-		a.style.fill = "none";
-		a.style.pointerEvents = "none";
-		svg.appendChild(a)
 	}
 	
 	svg.style.height = (commits.length * 20 + 40) + 'px'
