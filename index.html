@@ -35,13 +35,21 @@
 	.lightFill{
 		fill: #efefef;
 	}
+	.messages{
+		display: inline;
+		position: absolute;
+		height: 100%;
+		width: 100%;
+		font-family: monospace;
+		white-space: pre;
+	}
 	</style>
 </head>
 <body>
 	<h1>Git Graph Visualization</h1>
 	<div id="graphContainer">
 		<svg id="graph" width="200px" height="400px" style="width: 200px; height: 400px;"></svg>
-	<pre id="commits" style="display: inline"></pre>
+	<div id="commits" class="messages"></div>
 	</div>
 	<div id="msg">
 	</div>
@@ -55,7 +63,7 @@ $(document).ready(function(){
 		gitgraph.parseLog(log[0], $('#commits')[0])
 		gitgraph.parseRefs(refs[0])
 		var svg = document.getElementById("graph")
-		gitgraph.updateSvg(svg)
+		gitgraph.updateSvg(svg, $('#commits')[0])
 	});
 });
 </script>

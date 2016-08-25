@@ -157,7 +157,7 @@ this.parseLog = function(text, commitsElem){
 			commitStr += commitObj.msg[0]
 		commits.push(commitObj)
 		commitsElem.innerHTML += '<div class="' + (i % 2 === 0 ? 'light' : 'dark') +
-			'" style="position: absolute; left: 200px; top:' + (i * rowHeight - rowHeight / 2 + rowOffset) +
+			'" style="position: absolute; top:' + (i * rowHeight - rowHeight / 2 + rowOffset) +
 			'px; width: 100%; height: ' + rowHeight + 'px"><span class="valign">' +
 			commitStr + '</span></div>'
 	}
@@ -209,7 +209,7 @@ function findCommit(hash){
 	return null
 }
 
-this.updateSvg = function(svg){
+this.updateSvg = function(svg, commentElem){
 	var width = parseInt(svg.style.width);
 	var height = parseInt(svg.style.height);
 
@@ -255,15 +255,8 @@ this.updateSvg = function(svg){
 		commits[i].y = i * rowHeight + rowOffset
 	}
 
-	for(var i = 0; i < commits.length; i++){
-		var bg = document.createElementNS(NS,"rect")
-		bg.setAttribute('x', 0)
-		bg.setAttribute('y', i * rowHeight - rowHeight / 2 + rowOffset)
-		bg.setAttribute('width', width)
-		bg.setAttribute('height', rowHeight)
-		bg.setAttribute('class', i % 2 === 0 ? 'lightFill' : 'darkFill')
-		svg.appendChild(bg)
-	}
+	var bgGroup = document.createElementNS(NS,"g")
+	svg.appendChild(bgGroup)
 
 	var colorIdx = 0
 	for(var i = 0; i < commits.length; i++){
@@ -344,9 +337,28 @@ this.updateSvg = function(svg){
 
 			refx += t.getBBox().width + 15
 		}
+
+		if(svg.getBoundingClientRect().width < refx)
+			svg.style.width = Math.ceil(refx) + 'px'
 	}
-	
+
+	// Recalculate width by SVG content
+	width = Math.ceil(svg.getBoundingClientRect().width)
+
+	for(var i = 0; i < commits.length; i++){
+		var bg = document.createElementNS(NS,"rect")
+		bg.setAttribute('x', 0)
+		bg.setAttribute('y', i * rowHeight - rowHeight / 2 + rowOffset)
+		bg.setAttribute('width', width)
+		bg.setAttribute('height', rowHeight)
+		bg.setAttribute('class', i % 2 === 0 ? 'lightFill' : 'darkFill')
+		bgGroup.appendChild(bg)
+	}
+
 	svg.style.height = ((commits.length) * rowHeight + rowOffset) + 'px'
+
+	if(commentElem)
+		commentElem.style.left = width + 'px'
 }
 
 
