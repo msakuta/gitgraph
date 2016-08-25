@@ -48,11 +48,15 @@
 	<pre id="test"></pre>
 <script>
 $(document).ready(function(){
-	$.get("testlog.txt", "", function(file){
-		gitgraph.parseLog(file, $('#commits')[0])
+	var logAjax = $.get("testlog.txt")
+	var refsAjax = $.get("testrefs.txt")
+	$.when(logAjax, refsAjax)
+	.then(function(log, refs){
+		gitgraph.parseLog(log[0], $('#commits')[0])
+		gitgraph.parseRefs(refs[0])
 		var svg = document.getElementById("graph")
 		gitgraph.updateSvg(svg)
-	}, 'text');
+	});
 });
 </script>
 </body>

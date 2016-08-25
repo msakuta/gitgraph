@@ -15,6 +15,28 @@ var rowHeight = 20
 
 var commitMap = {}
 var commits = []
+var refs = {}
+
+/** Creates and returns rect element as a SVG element.
+ *
+ * @param {number} x   X coordinate of left edge.
+ * @param {number} y   Y coordinate of top edge.
+ * @param {number} width   Width of the rectangle.
+ * @param {number} height   Height of the rectangle.
+ * @param {string=} color   Fill style of the circle. Default is "white".
+ * @return {Element} the SVG element.
+ */
+function rect(x,y,width,height,color){
+	var c = document.createElementNS(NS,"rect");
+	c.x.baseVal.value = x;
+	c.y.baseVal.value = y;
+	c.width.baseVal.value = width;
+	c.height.baseVal.value = height;
+	c.style.stroke = "#000000";
+	c.style.strokeWidth = "1";
+	c.style.fill = color || "white";
+	return c;
+}
 
 /** Creates and returns circle element as a SVG element.
  *
@@ -158,6 +180,25 @@ this.parseLog = function(text, commitsElem){
 	}
 }
 
+/** Parse raw output from `git show-ref` command and save the
+ * information internally for use with updateSvg.
+ * 
+ * @param {string} text
+ */
+this.parseRefs = function(text){
+	var refStrs = text.match(/^[0-9a-f]+ .+$/mg)
+	if(!refStrs)
+		return
+	for(var i = 0; i < refStrs.length; i++){
+		var refStr = refStrs[i]
+		var re = /^([0-9a-f]+) (.+)/.exec(refStr)
+		// Insert into the map with reference name as the key.
+		if(re && re[1] !== '' && re[2] !== ''){
+			refs[re[2]] = re[1]
+		}
+	}
+}
+
 function findCommit(hash){
 	if(hash.length < 4)
 		throw "Hash length shorter than 4"
@@ -175,6 +216,16 @@ this.updateSvg = function(svg){
 	var columns = []
 	var colors = ['#7f0000', '#007f00', '#0000af', '#000000',
 		'#7f7f00', '#7f007f', '#007f7f']
+
+	// Update commit objects to have list of associated refs.
+	// This method should be faster than other way around.
+	for(var ref in refs){
+		var id = refs[ref]
+		if(id in commitMap){
+			commitMap[id].refs = commitMap[id].refs || []
+			commitMap[id].refs.push(ref)
+		}
+	}
 
 	for(var i = 0; i < commits.length; i++){
 		if(!commits[i].x){
@@ -256,6 +307,43 @@ this.updateSvg = function(svg){
 			svg.appendChild(delArc)
 		}
 
+		// Show refs
+		var numRefs = commit.refs ? commit.refs.length : 0
+		var refx = maxX + columnWidth
+		for(var j = 0; j < numRefs; j++){
+			var ref = commit.refs[j]
+			var color = 0 <= ref.search(/^refs\/heads\//) ? '#00ff00' :
+				0 <= ref.search(/^refs\/remotes\//) ? '#ffaf7f' :
+				0 <= ref.search(/^refs\/tags\//) ? '#ffff00' : '#7f7f7f'
+			// Truncate redundant prefixes
+			var text = ref
+				.replace(/^refs\/heads\//, '')
+				.replace(/^refs\/remotes\//, '')
+				.replace(/^refs\/tags\//, '')
+			var refGroup = document.createElementNS(NS,"g")
+			refGroup.setAttribute("transform", "translate(" + (refx)
+				+ "," + (commit.y - rowHeight / 2) + ")");
+
+			var t = document.createElementNS(NS,"text");
+			t.setAttribute("x", "5");
+			t.setAttribute("y", "15");
+			t.setAttribute("class", "noselect");
+			t.style.fontSize = "12px";
+			t.style.fontFamily = "sans-serif";
+			t.style.pointerEvents = "none";
+			t.textContent = text;
+
+			refGroup.appendChild(t)
+			svg.appendChild(refGroup)
+
+			// We can't measure width of text element until actually adding it
+			// to the SVG, so we need to create surrounding box later and
+			// insert before the text.
+			var r = rect(0, 0, t.getBBox().width + 10, rowHeight, color)
+			refGroup.insertBefore(r, t)
+
+			refx += t.getBBox().width + 15
+		}
 	}
 	
 	svg.style.height = ((commits.length) * rowHeight + rowOffset) + 'px'

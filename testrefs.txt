@@ -1,0 +1,8 @@
+fae1cabb519dfd1ce99059585853ab1928d72e8f refs/heads/master
+0c06ccdfa39316f3eaf51574add0c70d6532d16d refs/heads/new-oper
+d1d28aacc9ed4be2929b38924069121c580ecc3f refs/remotes/fork/HEAD
+d1d28aacc9ed4be2929b38924069121c580ecc3f refs/remotes/fork/master
+0c06ccdfa39316f3eaf51574add0c70d6532d16d refs/remotes/fork/new-oper
+fae1cabb519dfd1ce99059585853ab1928d72e8f refs/remotes/origin/master
+fae1cabb519dfd1ce99059585853ab1928d72e8f refs/tags/testtag
+cc8cdb25cce276ca86cf1d36caffcf7d4801a14f refs/tags/v3.1
