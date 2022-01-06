@@ -1,10 +1,8 @@
-use actix_web::{error, web, App, Error, HttpRequest, HttpResponse, HttpServer};
-use anyhow::{anyhow, Result};
-use colored::*;
+use actix_web::{web, App, HttpResponse, HttpServer};
+use anyhow::Result;
 use dunce::canonicalize;
-use git2::{Commit, ObjectType, Oid, Repository, Tree};
+use git2::{Commit, Oid, Repository, Tree};
 use handlebars::Handlebars;
-use regex::Regex;
 use serde::Serialize;
 use serde_json::json;
 use std::{
@@ -244,7 +242,7 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
         skipped_blobs: 0,
         all_matches: vec![],
     };
-    let mut checked_commits = HashMap::new();
+    let mut checked_commits = HashSet::new();
     let mut iter = 0;
 
     let mut next_refs = if settings.all {
@@ -260,18 +258,15 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
 
     loop {
         for commit in &next_refs {
-            if checked_commits.contains_key(&commit.id()) {
+            if !checked_commits.insert(commit.id()) {
                 continue;
             }
-            let entry = checked_commits.entry(commit.id()).or_insert(false);
 
             let tree = if let Ok(tree) = commit.tree() {
                 tree
             } else {
                 continue;
             };
-
-            process_tree.process(&tree, commit, &PathBuf::from(""), entry);
 
             if let Some((message, diff_stats)) = commit.message().zip(
                 prev_tree
@@ -293,7 +288,7 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
             .iter()
             .map(|reference| reference.parent_ids())
             .flatten()
-            .filter(|reference| !checked_commits.contains_key(reference))
+            .filter(|reference| !checked_commits.contains(reference))
             .map(|id| repo.find_commit(id))
             .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
 
