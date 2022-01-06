@@ -30,23 +30,12 @@ struct Opt {
     #[structopt(short, long, help = "Depth to search into git commit history")]
     depth: Option<usize>,
     #[structopt(
-        short = "o",
+        short,
         long,
-        help = "Turn off showing matches to a file only once; the default behavior is that if the same file with the same name has different versions that matches, they will not be printed."
+        help = "Number of commits in a page",
+        default_value = "50"
     )]
-    no_once_file: bool,
-    #[structopt(
-        short = "c",
-        long,
-        help = "Disable color coding for the output, default is to use colors in terminal"
-    )]
-    no_color_code: bool,
-    #[structopt(
-        short = "g",
-        long,
-        help = "Disable output grouping. Better for machine inputs"
-    )]
-    no_output_grouping: bool,
+    page_size: usize,
     #[structopt(short, long, help = "Verbose flag")]
     verbose: bool,
     #[structopt(short, long, help = "Add an entry to list of extensions to search")]
@@ -64,7 +53,13 @@ struct MyData {
     settings: Settings,
 }
 
-async fn index(data: web::Data<MyData>) -> HttpResponse {
+async fn index(_data: web::Data<MyData>) -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(include_str!("../index.html"))
+}
+
+async fn get_commits(data: web::Data<MyData>) -> HttpResponse {
     let home_path = &data.home_path;
     let reg = Handlebars::new();
 
@@ -77,21 +72,9 @@ async fn index(data: web::Data<MyData>) -> HttpResponse {
             time_load.elapsed().as_micros() as f64 / 1000.
         );
 
-        HttpResponse::Ok().content_type("text/html").body(
-            reg.render_template(
-                include_str!("../index.html"),
-                &json!({
-                    "commits": result,
-                }),
-            )
-            .unwrap(),
-            // format!(
-            // "<html><body><h1>Git, world! {:?}</h1><ul>{}</ul></body></html>",
-            // home_path,
-            // result
-            //     .iter()
-            //     .fold("".to_string(), |acc, cur| acc + &format!("<li>{}", cur)
-        )
+        HttpResponse::Ok()
+            .content_type("application/json")
+            .body(&json!(result).to_string())
     } else {
         HttpResponse::InternalServerError().body("Internal server error!")
     }
@@ -103,6 +86,8 @@ async fn main() -> std::io::Result<()> {
         .try_into()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
+    println!("page_size: {}", settings.page_size);
+
     let data = web::Data::new(MyData {
         home_path: canonicalize(PathBuf::from(&settings.repo))?,
         settings,
@@ -111,6 +96,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(data.clone())
             .route("/", web::get().to(index))
+            .route("/commits", web::get().to(get_commits))
             .route(
                 "/js/jquery-3.1.0.min.js",
                 web::get().to(|| async { include_str!("../js/jquery-3.1.0.min.js") }),
@@ -149,9 +135,7 @@ struct Settings {
     branch: Option<String>,
     all: bool,
     depth: Option<usize>,
-    once_file: bool,
-    color_code: bool,
-    output_grouping: bool,
+    page_size: usize,
     verbose: bool,
     extensions: HashSet<OsString>,
     ignore_dirs: HashSet<OsString>,
@@ -179,9 +163,7 @@ impl TryFrom<Opt> for Settings {
             branch: src.branch,
             all: src.all,
             depth: src.depth,
-            once_file: !src.no_once_file,
-            color_code: !src.no_color_code,
-            output_grouping: !src.no_output_grouping,
+            page_size: src.page_size,
             verbose: src.verbose,
             extensions: if src.extensions.is_empty() {
                 default_exts.iter().map(|ext| ext[1..].into()).collect()
@@ -246,7 +228,7 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
                 continue;
             };
 
-            if let Some((message, diff_stats)) = commit.message().zip(
+            if let Some((message, diff_stats)) = commit.summary().zip(
                 prev_tree
                     .and_then(|prev_tree| {
                         repo.diff_tree_to_tree(Some(&prev_tree), Some(&tree), None)
@@ -259,6 +241,9 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
                     insertions: diff_stats.insertions(),
                     deletions: diff_stats.deletions(),
                 });
+                if settings.page_size <= ret.len() {
+                    return Ok(ret);
+                }
             }
             prev_tree = Some(tree);
         }

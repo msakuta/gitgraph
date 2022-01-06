@@ -41,7 +41,7 @@
 		height: 100%;
 		width: 100%;
 		font-family: monospace;
-		white-space: pre;
+		/* white-space: pre; */
 	}
 	.insertions{
 		color: #007f00;
@@ -58,23 +58,18 @@
 	<div id="commits" class="messages"></div>
 	</div>
 	<ul>
-	{{#each commits}}
-		<li>
-			<span class="insertions">+{{insertions}}</span>
-			<span class="deletions">+{{deletions}}</span>
-			{{message}}
-		</li>
-	{{/each}}
 	</ul>
 	<div id="msg">
 	</div>
 	<pre id="test"></pre>
 <script>
 $(document).ready(function(){
+	var commitsAjax = $.get("commits")
 	var logAjax = $.get("testlog.txt")
 	var refsAjax = $.get("testrefs.txt")
-	$.when(logAjax, refsAjax)
-	.then(function(log, refs){
+	$.when(commitsAjax, logAjax, refsAjax)
+	.then(function(commits, log, refs){
+		gitgraph.renderLog(commits[0])
 		gitgraph.parseLog(log[0], $('#commits')[0])
 		gitgraph.parseRefs(refs[0])
 		var svg = document.getElementById("graph")

@@ -111,6 +111,17 @@ function setArrow(a,child,parent){
 	return maxX
 }
 
+this.renderLog = function(commits){
+	const text = commits.reduce((acc, cur, i) => acc + `<div class="${i % 2 === 0 ? 'light' : 'dark'}"
+		style="position: absolute; top:${i * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
+		<span class="valign">
+			<span class="insertions">+${cur.insertions}</span>
+			<span class="deletions">+${cur.deletions}</span>
+			${cur.message}
+		</span></div>`, "");
+	$("#commits")[0].innerHTML = text;
+};
+
 
 /** Parse raw output from `git log --pretty=raw --numstat` and format for HTML
  */
@@ -156,10 +167,10 @@ this.parseLog = function(text, commitsElem){
 		if(commitObj.msg && 0 < commitObj.msg.length)
 			commitStr += commitObj.msg[0]
 		commits.push(commitObj)
-		commitsElem.innerHTML += '<div class="' + (i % 2 === 0 ? 'light' : 'dark') +
-			'" style="position: absolute; top:' + (i * rowHeight - rowHeight / 2 + rowOffset) +
-			'px; width: 100%; height: ' + rowHeight + 'px"><span class="valign">' +
-			commitStr + '</span></div>'
+		// commitsElem.innerHTML += '<div class="' + (i % 2 === 0 ? 'light' : 'dark') +
+		// 	'" style="position: absolute; top:' + (i * rowHeight - rowHeight / 2 + rowOffset) +
+		// 	'px; width: 100%; height: ' + rowHeight + 'px"><span class="valign">' +
+		// 	commitStr + '</span></div>'
 	}
 
 	// Cache hash id to object map for quick looking up
