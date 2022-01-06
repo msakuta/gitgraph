@@ -43,6 +43,12 @@
 		font-family: monospace;
 		white-space: pre;
 	}
+	.insertions{
+		color: #007f00;
+	}
+	.deletions{
+		color: #f00;
+	}
 	</style>
 </head>
 <body>
@@ -51,6 +57,15 @@
 		<svg id="graph" width="200px" height="400px" style="width: 200px; height: 400px;"></svg>
 	<div id="commits" class="messages"></div>
 	</div>
+	<ul>
+	{{#each commits}}
+		<li>
+			<span class="insertions">+{{insertions}}</span>
+			<span class="deletions">+{{deletions}}</span>
+			{{message}}
+		</li>
+	{{/each}}
+	</ul>
 	<div id="msg">
 	</div>
 	<pre id="test"></pre>
