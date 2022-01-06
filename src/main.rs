@@ -1,16 +1,17 @@
 use actix_web::{web, App, HttpResponse, HttpServer};
 use anyhow::Result;
 use dunce::canonicalize;
-use git2::{Commit, Oid, Repository, Tree};
+use git2::{Oid, Repository};
 use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     convert::{TryFrom, TryInto},
     env,
     ffi::OsString,
     path::{Path, PathBuf},
+    time::Instant,
 };
 use structopt::StructOpt;
 
@@ -67,7 +68,15 @@ async fn index(data: web::Data<MyData>) -> HttpResponse {
     let home_path = &data.home_path;
     let reg = Handlebars::new();
 
+    let time_load = Instant::now();
+
     if let Ok(result) = process_files_git(home_path, &data.settings) {
+        println!(
+            "git history with {} commits analyzed in {} ms",
+            result.len(),
+            time_load.elapsed().as_micros() as f64 / 1000.
+        );
+
         HttpResponse::Ok().content_type("text/html").body(
             reg.render_template(
                 include_str!("../index.html"),
@@ -196,27 +205,6 @@ impl TryFrom<Opt> for Settings {
     }
 }
 
-struct ProcessTree<'a> {
-    settings: &'a Settings,
-    repo: &'a Repository,
-    checked_paths: HashSet<PathBuf>,
-    checked_blobs: HashSet<Oid>,
-    checked_trees: HashSet<Oid>,
-    walked: usize,
-    skipped_blobs: usize,
-    all_matches: Vec<MatchEntry>,
-}
-
-impl<'a> ProcessTree<'a> {
-    fn process(&mut self, tree: &Tree, commit: &Commit, path: &Path, visited: &mut bool) {
-        if self.checked_trees.contains(&tree.id()) {
-            return;
-        }
-        self.checked_trees.insert(tree.id());
-        self.walked += 1;
-    }
-}
-
 #[derive(Serialize)]
 struct CommitData {
     message: String,
@@ -232,16 +220,6 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
         repo.head()?
     };
 
-    let mut process_tree = ProcessTree {
-        settings,
-        repo: &repo,
-        checked_paths: HashSet::new(),
-        checked_blobs: HashSet::new(),
-        checked_trees: HashSet::new(),
-        walked: 0,
-        skipped_blobs: 0,
-        all_matches: vec![],
-    };
     let mut checked_commits = HashSet::new();
     let mut iter = 0;
 
@@ -293,14 +271,7 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
             .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
 
         if settings.verbose {
-            eprintln!(
-                "[{}] {} Matches in {} files {} skipped blobs... Next round has {} refs...",
-                iter,
-                process_tree.all_matches.len(),
-                process_tree.walked,
-                process_tree.skipped_blobs,
-                next_refs.len()
-            );
+            eprintln!("[{}] Next round has {} refs...", iter, next_refs.len());
         }
         iter += 1;
         if next_refs.is_empty() || settings.depth.map(|depth| depth <= iter).unwrap_or(false) {
