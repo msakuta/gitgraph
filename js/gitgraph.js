@@ -154,17 +154,10 @@ this.parseLog = function(aCommits, commitsElem){
  * 
  * @param {string} text
  */
-this.parseRefs = function(text){
-	var refStrs = text.match(/^[0-9a-f]+ .+$/mg)
-	if(!refStrs)
-		return
-	for(var i = 0; i < refStrs.length; i++){
-		var refStr = refStrs[i]
-		var re = /^([0-9a-f]+) (.+)/.exec(refStr)
-		// Insert into the map with reference name as the key.
-		if(re && re[1] !== '' && re[2] !== ''){
-			refs[re[2]] = re[1]
-		}
+this.parseRefs = function(aRefs){
+	refs = {}
+	for(const refPair of aRefs){
+		refs[refPair[0]] = refPair[1];
 	}
 }
 

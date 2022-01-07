@@ -65,7 +65,7 @@
 <script>
 $(document).ready(function(){
 	var commitsAjax = $.get("commits")
-	var refsAjax = $.get("testrefs.txt")
+	var refsAjax = $.get("refs")
 	$.when(commitsAjax, refsAjax)
 	.then(function(commits, refs){
 		gitgraph.renderLog(commits[0])

@@ -78,6 +78,28 @@ async fn get_commits(data: web::Data<MyData>) -> HttpResponse {
     }
 }
 
+async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
+    if let Ok(repo) = Repository::open(&data.settings.repo) {
+        if let Ok(refs) = repo.references() {
+            HttpResponse::Ok().content_type("application/json").body(
+                &json!(refs
+                    .filter_map(|r| {
+                        let r = r.ok()?;
+                        let name = r.name()?;
+                        let hash = r.peel_to_commit().ok()?.id().to_string();
+                        Some([name.to_owned(), hash])
+                    })
+                    .collect::<Vec<_>>())
+                .to_string(),
+            )
+        } else {
+            HttpResponse::InternalServerError().body("Refs could not be acquired")
+        }
+    } else {
+        HttpResponse::InternalServerError().body("Refs could not be acquired")
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let settings: Settings = Opt::from_args()
@@ -95,6 +117,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(data.clone())
             .route("/", web::get().to(index))
             .route("/commits", web::get().to(get_commits))
+            .route("/refs", web::get().to(get_refs))
             .route(
                 "/js/jquery-3.1.0.min.js",
                 web::get().to(|| async { include_str!("../js/jquery-3.1.0.min.js") }),
@@ -102,14 +125,6 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/js/gitgraph.js",
                 web::get().to(|| async { include_str!("../js/gitgraph.js") }),
-            )
-            .route(
-                "testlog.txt",
-                web::get().to(|| async { include_str!("../testlog.txt") }),
-            )
-            .route(
-                "testrefs.txt",
-                web::get().to(|| async { include_str!("../testrefs.txt") }),
             )
     })
     .bind(("127.0.0.1", 8084))?
