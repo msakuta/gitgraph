@@ -112,66 +112,24 @@ function setArrow(a,child,parent){
 }
 
 this.renderLog = function(commits){
-	const text = commits.reduce((acc, cur, i) => acc + `<div class="${i % 2 === 0 ? 'light' : 'dark'}"
+	const text = commits.reduce((acc, cur, i) => cur ? acc + `<div class="${i % 2 === 0 ? 'light' : 'dark'}"
 		style="position: absolute; top:${i * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
-		<span class="valign">
-			<span class="insertions">+${cur.insertions}</span>
-			<span class="deletions">-${cur.deletions}</span>
+		<span class="valign">${
+			cur.stat ? `
+			<span class="insertions">+${cur.stat.insertions}</span>
+			<span class="deletions">-${cur.stat.deletions}</span>`
+			: ""
+			}
 			${cur.message}
-		</span></div>`, "");
+		</span></div>` : acc, "");
 	$("#commits")[0].innerHTML = text;
 };
 
 
 /** Parse raw output from `git log --pretty=raw --numstat` and format for HTML
  */
-this.parseLog = function(text, commitsElem){
-	var commitStrs = text.match(/^commit [0-9a-f]+\r?\n(.|\r|\n)+?(?=^commit [0-9a-f]+)/mg)
-	if(!commitStrs)
-		return
-	for(var i = 0; i < commitStrs.length; i++){
-		var str = commitStrs[i]
-		var commitStr = str.match(/^commit [0-9a-f]+/)[0]
-		var commitHash = commitStr.substr("commit ".length).trim()
-		commitStr = commitHash.substr(0,6)
-		var parentMatch = str.match(/^parent [0-9a-f]+/gm)
-		var commitObj = {
-			hash: commitHash,
-			msg: str.match(/^    .+/gm)
-		}
-		if(parentMatch){
-			commitObj.parents = []
-			for(var j = 0; j < parentMatch.length; j++){
-				commitObj.parents.push(parentMatch[j].substr("parent ".length).trim())
-				commitStr += ' ' + parentMatch[j].substr("parent ".length, 6).trim()
-			}
-		}
-
-		// Check added/deleted lines
-		var statMatch = str.match(/^\d+\t\d+\t.+/gm)
-		if(statMatch){
-			commitObj.stat = {add: 0, del: 0, files: []}
-			for(var j = 0; j < statMatch.length; j++){
-				var re = /^(\d+)\t(\d+)\t(.+)/.exec(statMatch[j])
-				// Ignore binary files for now
-				if(re && re[1] !== '-' && re[2] !== '-'){
-					commitObj.stat.add += parseInt(re[1])
-					commitObj.stat.del += parseInt(re[2])
-					commitObj.stat.files.push({add: re[1], del: re[2], file: re[3]})
-				}
-			}
-			commitStr += ' <span style="color:green">+' + commitObj.stat.add + '</span> ' +
-				'<span style="color:red">-' + commitObj.stat.del + '</span>'
-		}
-
-		if(commitObj.msg && 0 < commitObj.msg.length)
-			commitStr += commitObj.msg[0]
-		commits.push(commitObj)
-		// commitsElem.innerHTML += '<div class="' + (i % 2 === 0 ? 'light' : 'dark') +
-		// 	'" style="position: absolute; top:' + (i * rowHeight - rowHeight / 2 + rowOffset) +
-		// 	'px; width: 100%; height: ' + rowHeight + 'px"><span class="valign">' +
-		// 	commitStr + '</span></div>'
-	}
+this.parseLog = function(aCommits, commitsElem){
+	commits = aCommits;
 
 	// Cache hash id to object map for quick looking up
 	for(var i = 0; i < commits.length; i++){
@@ -303,10 +261,10 @@ this.updateSvg = function(svg, commentElem){
 		var c = circle(commit.x * columnWidth + columnOffset, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
 		svg.appendChild(c)
 		if(commit.stat){
-			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.add + 1) + 0) * Math.PI / 5)
+			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.insertions + 1) + 0) * Math.PI / 5)
 			var addArc = arc(commit.x * columnWidth + columnOffset, commit.y, rad, 0, addAngle, 'green')
 			svg.appendChild(addArc)
-			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.del + 1) + 0) * Math.PI / 5)
+			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.deletions + 1) + 0) * Math.PI / 5)
 			var delArc = arc(commit.x * columnWidth + columnOffset, commit.y, rad, delAngle, 0, 'red')
 			svg.appendChild(delArc)
 		}

@@ -2,7 +2,6 @@ use actix_web::{web, App, HttpResponse, HttpServer};
 use anyhow::Result;
 use dunce::canonicalize;
 use git2::{Oid, Repository};
-use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use std::{
@@ -61,7 +60,6 @@ async fn index(_data: web::Data<MyData>) -> HttpResponse {
 
 async fn get_commits(data: web::Data<MyData>) -> HttpResponse {
     let home_path = &data.home_path;
-    let reg = Handlebars::new();
 
     let time_load = Instant::now();
 
@@ -188,10 +186,17 @@ impl TryFrom<Opt> for Settings {
 }
 
 #[derive(Serialize)]
-struct CommitData {
-    message: String,
+struct Stats {
     insertions: usize,
     deletions: usize,
+}
+
+#[derive(Serialize)]
+struct CommitData {
+    hash: String, // String is not the most efficient representation of the hash, but it's easy to serialize into a JSON
+    message: String,
+    stat: Option<Stats>,
+    parents: Vec<String>,
 }
 
 fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData>> {
@@ -214,7 +219,6 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
     };
 
     let mut ret = vec![];
-    let mut prev_tree = None;
 
     loop {
         for commit in &next_refs {
@@ -228,24 +232,38 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
                 continue;
             };
 
-            if let Some((message, diff_stats)) = commit.summary().zip(
-                prev_tree
-                    .and_then(|prev_tree| {
-                        repo.diff_tree_to_tree(Some(&prev_tree), Some(&tree), None)
-                            .ok()
-                    })
-                    .and_then(|diff| diff.stats().ok()),
-            ) {
+            if let Some(message) = commit.summary() {
+                let mut iter = commit.parent_ids();
+                iter.next();
+                let multi_parents = iter.next().is_some();
                 ret.push(CommitData {
+                    hash: commit.id().to_string(),
                     message: message.to_owned(),
-                    insertions: diff_stats.insertions(),
-                    deletions: diff_stats.deletions(),
+                    stat: if !multi_parents {
+                        commit
+                            .parents()
+                            .next()
+                            .and_then(|parent| parent.tree().ok())
+                            .and_then(|parent| {
+                                repo.diff_tree_to_tree(Some(&parent), Some(&tree), None)
+                                    .ok()
+                            })
+                            .and_then(|diff| diff.stats().ok())
+                            .and_then(|diff_stats| {
+                                Some(Stats {
+                                    insertions: diff_stats.insertions(),
+                                    deletions: diff_stats.deletions(),
+                                })
+                            })
+                    } else {
+                        None
+                    },
+                    parents: commit.parent_ids().map(|id| id.to_string()).collect(),
                 });
                 if settings.page_size <= ret.len() {
                     return Ok(ret);
                 }
             }
-            prev_tree = Some(tree);
         }
         next_refs = next_refs
             .iter()
