@@ -116,7 +116,7 @@ this.renderLog = function(commits){
 		style="position: absolute; top:${i * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
 		<span class="valign">
 			<span class="insertions">+${cur.insertions}</span>
-			<span class="deletions">+${cur.deletions}</span>
+			<span class="deletions">-${cur.deletions}</span>
 			${cur.message}
 		</span></div>`, "");
 	$("#commits")[0].innerHTML = text;
