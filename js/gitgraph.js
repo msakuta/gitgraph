@@ -114,7 +114,7 @@ function setArrow(a,child,parent){
 this.renderLog = function(commits){
 	const text = commits.reduce((acc, cur, i) => cur ? acc + `<div class="${i % 2 === 0 ? 'light' : 'dark'}"
 		style="position: absolute; top:${i * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
-		<span class="valign">${
+		<span class="valign" id="${cur.hash}">${
 			cur.stat ? `
 			<span class="insertions">+${cur.stat.insertions}</span>
 			<span class="deletions">-${cur.stat.deletions}</span>`
@@ -138,13 +138,25 @@ this.parseLog = function(aCommits, commitsElem){
 
 	// Cache children pointers from parents
 	for(var i = 0; i < commits.length; i++){
-		var parents = commits[i].parents
+		let commit = commits[i];
+		let parents = commit.parents;
 		for(var j = 0; j < parents.length; j++){
 			var parent = commitMap[parents[j]]
 			if(parent){
 				parent.children = parent.children || []
-				parent.children.push(commits[i])
+				parent.children.push(commit)
 			}
+		}
+		if(parents.length === 1){
+			fetch(`/diff_stats/${parents[0]}/${commits[i].hash}`)
+			.then((result) => result.json())
+			.then((json) => {
+				commit.stat = {
+					insertions: json[0],
+					deletions: json[1],
+				};
+				renderDiffStat(commit);
+			})
 		}
 	}
 }
@@ -169,6 +181,32 @@ function findCommit(hash){
 			return commits[i]
 	}
 	return null
+}
+
+function renderDiffStat(commit){
+	if(!commit.stat)
+		return;
+	const rad = commit.stat ? 6 : 7;
+	var c = circle(0, 0, rad, '#afafaf', '#000', "5");
+	commit.svgGroup.appendChild(c)
+	var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.insertions + 1) + 0) * Math.PI / 5)
+	var addArc = arc(0, 0, rad, 0, addAngle, 'green')
+	commit.svgGroup.appendChild(addArc)
+	var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.deletions + 1) + 0) * Math.PI / 5)
+	var delArc = arc(0, 0, rad, delAngle, 0, 'red')
+	commit.svgGroup.appendChild(delArc)
+
+	const messageElem = $(`#${commit.hash}`)[0];
+	if(messageElem){
+		const deletionsElem = document.createElement("span");
+		deletionsElem.className = "deletions";
+		deletionsElem.innerHTML = `-${commit.stat.deletions}`;
+		messageElem.prepend(deletionsElem);
+		const insertionsElem = document.createElement("span");
+		insertionsElem.className = "insertions";
+		insertionsElem.innerHTML = `+${commit.stat.insertions} `;
+		messageElem.prepend(insertionsElem);
+	}
 }
 
 this.updateSvg = function(svg, commentElem){
@@ -251,16 +289,12 @@ this.updateSvg = function(svg, commentElem){
 
 		// Add the commit marker circle after the connection lines, to make sure
 		// the marker is painted on top of the lines.
-		var c = circle(commit.x * columnWidth + columnOffset, commit.y, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
-		svg.appendChild(c)
-		if(commit.stat){
-			var addAngle = Math.min(Math.PI, (Math.log10(commit.stat.insertions + 1) + 0) * Math.PI / 5)
-			var addArc = arc(commit.x * columnWidth + columnOffset, commit.y, rad, 0, addAngle, 'green')
-			svg.appendChild(addArc)
-			var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.deletions + 1) + 0) * Math.PI / 5)
-			var delArc = arc(commit.x * columnWidth + columnOffset, commit.y, rad, delAngle, 0, 'red')
-			svg.appendChild(delArc)
-		}
+		let group = document.createElementNS(NS,"g");
+		var c = circle(0, 0, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
+		group.appendChild(c);
+		group.setAttribute("transform", `translate(${commit.x * columnWidth + columnOffset} ${commit.y})`);
+		svg.appendChild(group);
+		commit.svgGroup = group;
 
 		// Show refs
 		var numRefs = commit.refs ? commit.refs.length : 0

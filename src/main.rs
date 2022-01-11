@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dunce::canonicalize;
 use git2::{Oid, Repository};
@@ -100,6 +100,42 @@ async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
     }
 }
 
+/// Adapter error type that connects anyhow::Error and actix-web errors
+#[derive(Debug)]
+struct AnyhowError(anyhow::Error);
+
+impl std::fmt::Display for AnyhowError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<anyhow::Error> for AnyhowError {
+    fn from(a: anyhow::Error) -> Self {
+        Self(a)
+    }
+}
+
+impl actix_web::error::ResponseError for AnyhowError {}
+
+// #[get("/diff/{commit_a}/{commit_b}")]
+async fn get_diff(
+    data: web::Data<MyData>,
+    web::Path((commit_a, commit_b)): web::Path<(String, String)>,
+) -> std::result::Result<impl Responder, AnyhowError> {
+    let get_diff_int = || -> Result<git2::DiffStats> {
+        let repo = Repository::open(&data.settings.repo)?;
+        let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
+        let commit_b = repo.find_commit(Oid::from_str(&commit_b)?)?.tree()?;
+        let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
+        Ok(diff.stats()?)
+    };
+    let stats = get_diff_int()?;
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(format!("[{},{}]", stats.insertions(), stats.deletions())))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let settings: Settings = Opt::from_args()
@@ -118,6 +154,7 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(index))
             .route("/commits", web::get().to(get_commits))
             .route("/refs", web::get().to(get_refs))
+            .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
                 "/js/jquery-3.1.0.min.js",
                 web::get().to(|| async { include_str!("../js/jquery-3.1.0.min.js") }),
@@ -210,14 +247,13 @@ struct Stats {
 struct CommitData {
     hash: String, // String is not the most efficient representation of the hash, but it's easy to serialize into a JSON
     message: String,
-    stat: Option<Stats>,
     parents: Vec<String>,
 }
 
 fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData>> {
     let repo = Repository::open(&settings.repo)?;
     let reference = if let Some(ref branch) = settings.branch {
-        repo.resolve_reference_from_short_name(&branch)?
+        repo.resolve_reference_from_short_name(branch)?
     } else {
         repo.head()?
     };
@@ -241,38 +277,12 @@ fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData
                 continue;
             }
 
-            let tree = if let Ok(tree) = commit.tree() {
-                tree
-            } else {
-                continue;
-            };
-
             if let Some(message) = commit.summary() {
                 let mut iter = commit.parent_ids();
                 iter.next();
-                let multi_parents = iter.next().is_some();
                 ret.push(CommitData {
                     hash: commit.id().to_string(),
                     message: message.to_owned(),
-                    stat: if !multi_parents {
-                        commit
-                            .parents()
-                            .next()
-                            .and_then(|parent| parent.tree().ok())
-                            .and_then(|parent| {
-                                repo.diff_tree_to_tree(Some(&parent), Some(&tree), None)
-                                    .ok()
-                            })
-                            .and_then(|diff| diff.stats().ok())
-                            .and_then(|diff_stats| {
-                                Some(Stats {
-                                    insertions: diff_stats.insertions(),
-                                    deletions: diff_stats.deletions(),
-                                })
-                            })
-                    } else {
-                        None
-                    },
                     parents: commit.parent_ids().map(|id| id.to_string()).collect(),
                 });
                 if settings.page_size <= ret.len() {
