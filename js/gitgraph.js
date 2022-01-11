@@ -354,7 +354,7 @@ this.updateSvg = function(svg, commentElem, commits=undefined, yOffset=0){
 			svg.style.width = Math.ceil(refx) + 'px'
 	}
 
-	lastCommits = 0 < commits.length ? [commits[commits.length-1]] : [];
+	lastCommits = 0 < commits.length ? columns.filter(c => c) : [];
 
 	// Recalculate width by SVG content
 	width = Math.ceil(svg.getBoundingClientRect().width)
@@ -385,8 +385,17 @@ $(window).scroll((event) => {
 		if(!pendingFetch && lastCommits.length !== 0){
 			pendingFetch = true;
 			console.log(`Pending fetch for ${lastCommits[0]} started`);
-			fetch(`/commits/${lastCommits[0].hash}`)
-			.then((resp) => resp.json())
+			fetch("/commits", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(lastCommits),
+			})
+			.then((resp) => {
+				if(!resp.ok){
+					throw new Error(`HTTP error! status: ${resp.status}`);
+				}
+				return resp.json();
+			})
 			.then(json => {
 				const commits = json;
 				commits.shift();

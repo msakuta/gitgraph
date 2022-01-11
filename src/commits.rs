@@ -1,3 +1,5 @@
+//! API implementations for commits request
+
 use actix_web::{web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{Commit, Oid, Repository};
@@ -6,6 +8,7 @@ use std::{collections::HashSet, time::Instant};
 
 use super::{AnyhowError, CommitData, MyData, Settings};
 
+/// Default commit query (head or all, depending on settings)
 #[actix_web::get("/commits")]
 async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
@@ -41,6 +44,7 @@ async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responde
         .body(&json!(result).to_string()))
 }
 
+/// Single commit query
 #[actix_web::get("/commits/{id}")]
 async fn get_commits_hash(
     data: web::Data<MyData>,
@@ -59,6 +63,38 @@ async fn get_commits_hash(
         "git history with {} commits from {}analyzed in {} ms",
         result.len(),
         id,
+        time_load.elapsed().as_micros() as f64 / 1000.
+    );
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(&json!(result).to_string()))
+}
+
+/// Multiple commits in request body
+#[actix_web::post("/commits")]
+async fn get_commits_multi(
+    data: web::Data<MyData>,
+    request: web::Json<Vec<String>>,
+) -> actix_web::Result<impl Responder> {
+    let time_load = Instant::now();
+
+    let result = (|| -> Result<Vec<CommitData>> {
+        let repo = Repository::open(&data.settings.repo)?;
+
+        let commits = request
+            .iter()
+            .map(|name| repo.find_commit(Oid::from_str(name)?))
+            .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
+
+        process_files_git(&repo, &data.settings, &commits)
+    })()
+    .map_err::<AnyhowError, _>(|err| err.into())?;
+
+    println!(
+        "git history from {} commits results {} analyzed in {} ms",
+        request.len(),
+        result.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 

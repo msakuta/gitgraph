@@ -1,6 +1,6 @@
 mod commits;
 
-use crate::commits::{get_commits, get_commits_hash};
+use crate::commits::{get_commits, get_commits_hash, get_commits_multi};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dunce::canonicalize;
@@ -132,6 +132,7 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(index))
             .service(get_commits)
             .service(get_commits_hash)
+            .service(get_commits_multi)
             .route("/refs", web::get().to(get_refs))
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
