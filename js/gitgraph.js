@@ -14,8 +14,9 @@ var rowOffset = 10
 var rowHeight = 20
 
 var commitMap = {}
-var commits = []
+var allCommits = []
 var refs = {}
+let lastCommits = []
 
 /** Creates and returns rect element as a SVG element.
  *
@@ -111,9 +112,12 @@ function setArrow(a,child,parent){
 	return maxX
 }
 
-this.renderLog = function(commits){
-	const text = commits.reduce((acc, cur, i) => cur ? acc + `<div class="${i % 2 === 0 ? 'light' : 'dark'}"
-		style="position: absolute; top:${i * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
+this.renderLog = function(commits, yOffset=0){
+	const text = commits.reduce((acc, cur, i) => {
+		const index = i + yOffset;
+		if(cur){
+			return acc + `<div class="${index % 2 === 0 ? 'light' : 'dark'}"
+		style="position: absolute; top:${index * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
 		<span class="valign" id="${cur.hash}">${
 			cur.stat ? `
 			<span class="insertions">+${cur.stat.insertions}</span>
@@ -121,24 +125,29 @@ this.renderLog = function(commits){
 			: ""
 			}
 			${cur.message}
-		</span></div>` : acc, "");
-	$("#commits")[0].innerHTML = text;
+		</span></div>`;
+		}
+		else{
+			return acc;
+		}
+	}, "");
+	$("#commits")[0].innerHTML += text;
 };
 
 
 /** Parse raw output from `git log --pretty=raw --numstat` and format for HTML
  */
-this.parseLog = function(aCommits, commitsElem){
-	commits = aCommits;
+this.parseLog = function(aCommits){
+	allCommits = allCommits.concat(aCommits);
 
 	// Cache hash id to object map for quick looking up
-	for(var i = 0; i < commits.length; i++){
-		commitMap[commits[i].hash] = commits[i]
+	for(var i = 0; i < aCommits.length; i++){
+		commitMap[aCommits[i].hash] = aCommits[i]
 	}
 
 	// Cache children pointers from parents
-	for(var i = 0; i < commits.length; i++){
-		let commit = commits[i];
+	for(var i = 0; i < aCommits.length; i++){
+		let commit = aCommits[i];
 		let parents = commit.parents;
 		for(var j = 0; j < parents.length; j++){
 			var parent = commitMap[parents[j]]
@@ -148,7 +157,7 @@ this.parseLog = function(aCommits, commitsElem){
 			}
 		}
 		if(parents.length === 1){
-			fetch(`/diff_stats/${parents[0]}/${commits[i].hash}`)
+			fetch(`/diff_stats/${parents[0]}/${commit.hash}`)
 			.then((result) => result.json())
 			.then((json) => {
 				commit.stat = {
@@ -176,9 +185,9 @@ this.parseRefs = function(aRefs){
 function findCommit(hash){
 	if(hash.length < 4)
 		throw "Hash length shorter than 4"
-	for(var i = 0; i < commits.length; i++){
-		if(commits[i].hash.substr(0, hash.length) === hash)
-			return commits[i]
+	for(var i = 0; i < allCommits.length; i++){
+		if(allCommits[i].hash.substr(0, hash.length) === hash)
+			return allCommits[i]
 	}
 	return null
 }
@@ -209,14 +218,7 @@ function renderDiffStat(commit){
 	}
 }
 
-this.updateSvg = function(svg, commentElem){
-	var width = parseInt(svg.style.width);
-	var height = parseInt(svg.style.height);
-
-	var columns = []
-	var colors = ['#7f0000', '#007f00', '#0000af', '#000000',
-		'#7f7f00', '#7f007f', '#007f7f']
-
+this.updateRefs = function(){
 	// Update commit objects to have list of associated refs.
 	// This method should be faster than other way around.
 	for(var ref in refs){
@@ -226,6 +228,18 @@ this.updateSvg = function(svg, commentElem){
 			commitMap[id].refs.push(ref)
 		}
 	}
+};
+
+let bgGroup;
+let columns = [];
+const colors = ['#7f0000', '#007f00', '#0000af', '#000000',
+	'#7f7f00', '#7f007f', '#007f7f'];
+
+this.updateSvg = function(svg, commentElem, commits=undefined, yOffset=0){
+	var width = parseInt(svg.style.width);
+	var height = parseInt(svg.style.height);
+
+	commits = commits || allCommits;
 
 	for(var i = 0; i < commits.length; i++){
 		if(!commits[i].x){
@@ -233,7 +247,7 @@ this.updateSvg = function(svg, commentElem){
 
 			// Find vacant column
 			for(var j = 0; j < columns.length; j++){
-				if(columns[j] === commit){
+				if(columns[j] === commit.hash){
 					columns[j] = null
 					break
 				}
@@ -243,20 +257,22 @@ this.updateSvg = function(svg, commentElem){
 			// Reserve columns for parents from vacant ones
 			var numParents = commit.parents ? commit.parents.length : 0
 			for(var k = 0; k < numParents; k++){
-				var parent = commitMap[commit.parents[k]]
+				const parentHash = commit.parents[k];
 				for(var j = 0; j < columns.length; j++){
-					if(!columns[j] || columns[j] === parent){
+					if(!columns[j] || columns[j] === parentHash){
 						break
 					}
 				}
-				columns[j] = parent
+				columns[j] = parentHash
 			}
 		}
-		commits[i].y = i * rowHeight + rowOffset
+		commits[i].y = (i + yOffset) * rowHeight + rowOffset
 	}
 
-	var bgGroup = document.createElementNS(NS,"g")
-	svg.appendChild(bgGroup)
+	if(!bgGroup){
+		bgGroup = document.createElementNS(NS,"g")
+		svg.appendChild(bgGroup)
+	}
 
 	var colorIdx = 0
 	for(var i = 0; i < commits.length; i++){
@@ -338,24 +354,52 @@ this.updateSvg = function(svg, commentElem){
 			svg.style.width = Math.ceil(refx) + 'px'
 	}
 
+	lastCommits = 0 < commits.length ? [commits[commits.length-1]] : [];
+
 	// Recalculate width by SVG content
 	width = Math.ceil(svg.getBoundingClientRect().width)
 
 	for(var i = 0; i < commits.length; i++){
+		const index = i + yOffset;
 		var bg = document.createElementNS(NS,"rect")
 		bg.setAttribute('x', 0)
-		bg.setAttribute('y', i * rowHeight - rowHeight / 2 + rowOffset)
+		bg.setAttribute('y', index * rowHeight - rowHeight / 2 + rowOffset)
 		bg.setAttribute('width', width)
 		bg.setAttribute('height', rowHeight)
-		bg.setAttribute('class', i % 2 === 0 ? 'lightFill' : 'darkFill')
+		bg.setAttribute('class', index % 2 === 0 ? 'lightFill' : 'darkFill')
 		bgGroup.appendChild(bg)
 	}
 
-	svg.style.height = ((commits.length) * rowHeight + rowOffset) + 'px'
+	svg.style.height = ((allCommits.length) * rowHeight + rowOffset) + 'px'
 
 	if(commentElem)
 		commentElem.style.left = width + 'px'
 }
+
+let pendingFetch = false;
+
+$(window).scroll((event) => {
+	const scrollBottom = $(window).scrollTop() + document.documentElement.clientHeight;
+	console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
+	if(document.body.scrollHeight <= scrollBottom){
+		if(!pendingFetch && lastCommits.length !== 0){
+			pendingFetch = true;
+			console.log(`Pending fetch for ${lastCommits[0]} started`);
+			fetch(`/commits/${lastCommits[0].hash}`)
+			.then((resp) => resp.json())
+			.then(json => {
+				const commits = json;
+				commits.shift();
+				const yOffset = allCommits.length;
+				this.renderLog(json, yOffset);
+				this.parseLog(json);
+				this.updateSvg($("#graph")[0], $('#commits')[0], json, yOffset);
+				pendingFetch = false;
+				console.log(`Pending fetch for ${lastCommits[0]} ended`);
+			});
+		}
+	}
+})
 
 
 })()

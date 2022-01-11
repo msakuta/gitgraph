@@ -71,6 +71,7 @@ $(document).ready(function(){
 		gitgraph.renderLog(commits[0])
 		gitgraph.parseLog(commits[0], $('#commits')[0])
 		gitgraph.parseRefs(refs[0])
+		gitgraph.updateRefs()
 		var svg = document.getElementById("graph")
 		gitgraph.updateSvg(svg, $('#commits')[0])
 	});

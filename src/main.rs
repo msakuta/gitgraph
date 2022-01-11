@@ -1,7 +1,7 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dunce::canonicalize;
-use git2::{Oid, Repository};
+use git2::{Commit, Oid, Repository};
 use serde::Serialize;
 use serde_json::json;
 use std::{
@@ -9,7 +9,7 @@ use std::{
     convert::{TryFrom, TryInto},
     env,
     ffi::OsString,
-    path::{Path, PathBuf},
+    path::PathBuf,
     time::Instant,
 };
 use structopt::StructOpt;
@@ -48,7 +48,6 @@ struct Opt {
 }
 
 struct MyData {
-    home_path: PathBuf,
     settings: Settings,
 }
 
@@ -58,24 +57,65 @@ async fn index(_data: web::Data<MyData>) -> HttpResponse {
         .body(include_str!("../index.html"))
 }
 
-async fn get_commits(data: web::Data<MyData>) -> HttpResponse {
-    let home_path = &data.home_path;
-
+#[actix_web::get("/commits")]
+async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    if let Ok(result) = process_files_git(home_path, &data.settings) {
-        println!(
-            "git history with {} commits analyzed in {} ms",
-            result.len(),
-            time_load.elapsed().as_micros() as f64 / 1000.
-        );
+    let result = (|| -> Result<Vec<CommitData>> {
+        let repo = Repository::open(&data.settings.repo)?;
 
-        HttpResponse::Ok()
-            .content_type("application/json")
-            .body(&json!(result).to_string())
-    } else {
-        HttpResponse::InternalServerError().body("Internal server error!")
-    }
+        let reference = if let Some(ref branch) = data.settings.branch {
+            repo.resolve_reference_from_short_name(branch)?
+        } else {
+            repo.head()?
+        };
+
+        let head = if data.settings.all {
+            repo.references()?
+                .map(|refs| refs.and_then(|refb| refb.peel_to_commit()))
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            vec![reference.peel_to_commit()?]
+        };
+        process_files_git(&repo, &data.settings, &head)
+    })()
+    .map_err::<AnyhowError, _>(|err| err.into())?;
+
+    println!(
+        "git history with {} commits analyzed in {} ms",
+        result.len(),
+        time_load.elapsed().as_micros() as f64 / 1000.
+    );
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(&json!(result).to_string()))
+}
+
+#[actix_web::get("/commits/{id}")]
+async fn get_commits_hash(
+    data: web::Data<MyData>,
+    web::Path(id): web::Path<String>,
+) -> actix_web::Result<impl Responder> {
+    let time_load = Instant::now();
+
+    let result = (|| -> Result<_> {
+        let repo = Repository::open(&data.settings.repo)?;
+        let commit = [repo.find_commit(Oid::from_str(&id)?)?];
+        process_files_git(&repo, &data.settings, &commit)
+    })()
+    .map_err::<AnyhowError, _>(|err| err.into())?;
+
+    println!(
+        "git history with {} commits from {}analyzed in {} ms",
+        result.len(),
+        id,
+        time_load.elapsed().as_micros() as f64 / 1000.
+    );
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(&json!(result).to_string()))
 }
 
 async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
@@ -100,7 +140,7 @@ async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
     }
 }
 
-/// Adapter error type that connects anyhow::Error and actix-web errors
+/// Adapter error type that connects anyhow::Error and actix-web errors. Using newtype pattern to get around orphan rule.
 #[derive(Debug)]
 struct AnyhowError(anyhow::Error);
 
@@ -144,15 +184,13 @@ async fn main() -> std::io::Result<()> {
 
     println!("page_size: {}", settings.page_size);
 
-    let data = web::Data::new(MyData {
-        home_path: canonicalize(PathBuf::from(&settings.repo))?,
-        settings,
-    });
+    let data = web::Data::new(MyData { settings });
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
             .route("/", web::get().to(index))
-            .route("/commits", web::get().to(get_commits))
+            .service(get_commits)
+            .service(get_commits_hash)
             .route("/refs", web::get().to(get_refs))
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
@@ -250,24 +288,15 @@ struct CommitData {
     parents: Vec<String>,
 }
 
-fn process_files_git(_root: &Path, settings: &Settings) -> Result<Vec<CommitData>> {
-    let repo = Repository::open(&settings.repo)?;
-    let reference = if let Some(ref branch) = settings.branch {
-        repo.resolve_reference_from_short_name(branch)?
-    } else {
-        repo.head()?
-    };
-
+fn process_files_git(
+    repo: &Repository,
+    settings: &Settings,
+    head: &[Commit],
+) -> Result<Vec<CommitData>> {
     let mut checked_commits = HashSet::new();
     let mut iter = 0;
 
-    let mut next_refs = if settings.all {
-        repo.references()?
-            .map(|refs| refs.and_then(|refb| refb.peel_to_commit()))
-            .collect::<std::result::Result<Vec<_>, _>>()?
-    } else {
-        vec![reference.peel_to_commit()?]
-    };
+    let mut next_refs = head.to_vec();
 
     let mut ret = vec![];
 
