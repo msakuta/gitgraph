@@ -1,6 +1,8 @@
 mod commits;
 
 use crate::commits::{get_commits, get_commits_hash, get_commits_multi};
+#[cfg(debug_assertions)]
+use actix_files::NamedFile;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dunce::canonicalize;
@@ -53,10 +55,35 @@ struct MyData {
     settings: Settings,
 }
 
-async fn index(_data: web::Data<MyData>) -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(include_str!("../index.html"))
+#[cfg(debug_assertions)]
+macro_rules! get_static_file {
+    ($file:expr) => {{
+        async fn f() -> actix_web::Result<NamedFile> {
+            (|| -> Result<NamedFile> {
+                let path = if &$file[..3] == "../" {
+                    &$file[3..]
+                } else {
+                    $file
+                };
+                let abs_path = std::env::current_dir()?.join(path);
+                println!("path: {:?}", abs_path);
+                Ok(NamedFile::open(abs_path)?)
+            })()
+            .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
+        }
+        f
+    }};
+}
+
+#[cfg(not(debug_assertions))]
+macro_rules! get_static_file {
+    ($file:expr) => {
+        || async {
+            HttpResponse::Ok()
+                .content_type("text/html")
+                .body(include_str!($file))
+        }
+    };
 }
 
 async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
@@ -129,7 +156,7 @@ async fn main() -> std::io::Result<()> {
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
-            .route("/", web::get().to(index))
+            .route("/", web::get().to(get_static_file!("../index.html")))
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
@@ -137,11 +164,11 @@ async fn main() -> std::io::Result<()> {
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
                 "/js/jquery-3.1.0.min.js",
-                web::get().to(|| async { include_str!("../js/jquery-3.1.0.min.js") }),
+                web::get().to(get_static_file!("../js/jquery-3.1.0.min.js")),
             )
             .route(
                 "/js/gitgraph.js",
-                web::get().to(|| async { include_str!("../js/gitgraph.js") }),
+                web::get().to(get_static_file!("../js/gitgraph.js")),
             )
     })
     .bind(("127.0.0.1", 8084))?
