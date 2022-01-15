@@ -7,7 +7,6 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dunce::canonicalize;
 use git2::{Oid, Repository};
-use serde::Serialize;
 use serde_json::json;
 use std::{
     collections::HashSet,
@@ -242,17 +241,4 @@ impl TryFrom<Opt> for Settings {
             },
         })
     }
-}
-
-#[derive(Serialize)]
-struct Stats {
-    insertions: usize,
-    deletions: usize,
-}
-
-#[derive(Serialize)]
-struct CommitData {
-    hash: String, // String is not the most efficient representation of the hash, but it's easy to serialize into a JSON
-    message: String,
-    parents: Vec<String>,
 }

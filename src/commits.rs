@@ -3,10 +3,24 @@
 use actix_web::{web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{Commit, Oid, Repository};
+use serde::Serialize;
 use serde_json::json;
 use std::{collections::HashSet, time::Instant};
 
-use super::{AnyhowError, CommitData, MyData, Settings};
+use super::{AnyhowError, MyData, Settings};
+
+#[derive(Serialize)]
+struct Stats {
+    insertions: usize,
+    deletions: usize,
+}
+
+#[derive(Serialize)]
+struct CommitData {
+    hash: String, // String is not the most efficient representation of the hash, but it's easy to serialize into a JSON
+    message: String,
+    parents: Vec<String>,
+}
 
 /// Default commit query (head or all, depending on settings)
 #[actix_web::get("/commits")]
