@@ -4,7 +4,7 @@
 	<meta charset="utf-8">
 	<title>Git Graph Visualization</title>
 	<script src="./js/jquery-3.1.0.min.js"></script>
-	<script src="./js/gitgraph.js"></script>
+	<script src="./js/gitgraph.js" type="module"></script>
 	<style>
 	.noselect {
 	  -webkit-touch-callout: none; /* iOS Safari */
@@ -62,20 +62,5 @@
 	<div id="msg">
 	</div>
 	<pre id="test"></pre>
-<script>
-$(document).ready(function(){
-	var commitsAjax = $.get("commits")
-	var refsAjax = $.get("refs")
-	$.when(commitsAjax, refsAjax)
-	.then(function(commits, refs){
-		gitgraph.renderLog(commits[0])
-		gitgraph.parseLog(commits[0], $('#commits')[0])
-		gitgraph.parseRefs(refs[0])
-		gitgraph.updateRefs()
-		var svg = document.getElementById("graph")
-		gitgraph.updateSvg(svg, $('#commits')[0])
-	});
-});
-</script>
 </body>
 </html>
