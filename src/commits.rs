@@ -5,7 +5,11 @@ use anyhow::Result;
 use git2::{Commit, Oid, Repository};
 use serde::Serialize;
 use serde_json::json;
-use std::{collections::HashSet, time::Instant};
+use std::{
+    collections::{BinaryHeap, HashSet},
+    iter::FromIterator,
+    time::Instant,
+};
 
 use super::{AnyhowError, MyData, Settings};
 
@@ -117,51 +121,61 @@ async fn get_commits_multi(
         .body(&json!(result).to_string()))
 }
 
+struct CommitWrap<'a>(Commit<'a>);
+
+impl std::cmp::PartialEq for CommitWrap<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.time() == other.0.time()
+    }
+}
+
+impl std::cmp::Eq for CommitWrap<'_> {}
+
+impl std::cmp::PartialOrd for CommitWrap<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.time().partial_cmp(&other.0.time())
+    }
+}
+
+impl std::cmp::Ord for CommitWrap<'_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        println!("Comparing {} and {}", self.0.id(), other.0.id());
+        self.0.time().cmp(&other.0.time())
+    }
+}
+
 fn process_files_git(
     repo: &Repository,
     settings: &Settings,
     head: &[Commit],
 ) -> Result<Vec<CommitData>> {
     let mut checked_commits = HashSet::new();
-    let mut iter = 0;
 
-    let mut next_refs = head.to_vec();
+    let mut next_refs =
+        BinaryHeap::from_iter(head.iter().cloned().map(|commit| CommitWrap(commit)));
 
     let mut ret = vec![];
 
-    loop {
-        for commit in &next_refs {
-            if !checked_commits.insert(commit.id()) {
-                continue;
-            }
+    while let Some(CommitWrap(commit)) = next_refs.pop() {
+        if !checked_commits.insert(commit.id()) {
+            continue;
+        }
 
-            if let Some(message) = commit.summary() {
-                let mut iter = commit.parent_ids();
-                iter.next();
-                ret.push(CommitData {
-                    hash: commit.id().to_string(),
-                    message: message.to_owned(),
-                    parents: commit.parent_ids().map(|id| id.to_string()).collect(),
-                });
-                if settings.page_size <= ret.len() {
-                    return Ok(ret);
-                }
+        for parent in commit.parent_ids() {
+            if let Ok(parent) = repo.find_commit(parent) {
+                next_refs.push(CommitWrap(parent));
             }
         }
-        next_refs = next_refs
-            .iter()
-            .map(|reference| reference.parent_ids())
-            .flatten()
-            .filter(|reference| !checked_commits.contains(reference))
-            .map(|id| repo.find_commit(id))
-            .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
 
-        if settings.verbose {
-            eprintln!("[{}] Next round has {} refs...", iter, next_refs.len());
-        }
-        iter += 1;
-        if next_refs.is_empty() || settings.depth.map(|depth| depth <= iter).unwrap_or(false) {
-            break;
+        if let Some(message) = commit.summary() {
+            ret.push(CommitData {
+                hash: commit.id().to_string(),
+                message: message.to_owned(),
+                parents: commit.parent_ids().map(|id| id.to_string()).collect(),
+            });
+            if settings.page_size <= ret.len() {
+                return Ok(ret);
+            }
         }
     }
     Ok(ret)
