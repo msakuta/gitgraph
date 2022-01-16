@@ -3,15 +3,17 @@
 use actix_web::{web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{Commit, Oid, Repository};
-use serde::Serialize;
+use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
     collections::{BinaryHeap, HashSet},
+    convert::From,
     iter::FromIterator,
     time::Instant,
 };
 
-use super::{AnyhowError, MyData, Settings};
+use super::{AnyhowError, MyData, SessionId, Settings};
 
 #[derive(Serialize)]
 struct Stats {
@@ -26,12 +28,22 @@ struct CommitData {
     parents: Vec<String>,
 }
 
+#[derive(Serialize)]
+struct CommitResponse {
+    commits: Vec<CommitData>,
+    session: SessionId,
+}
+
+fn map_err(err: impl ToString) -> actix_web::Error {
+    actix_web::error::ErrorInternalServerError(err.to_string())
+}
+
 /// Default commit query (head or all, depending on settings)
 #[actix_web::get("/commits")]
-async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
+pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<Vec<CommitData>> {
+    let result = (|| -> Result<(Vec<CommitData>, HashSet<Oid>)> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let reference = if let Some(ref branch) = data.settings.branch {
@@ -47,19 +59,34 @@ async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responde
         } else {
             vec![reference.peel_to_commit()?]
         };
-        process_files_git(&repo, &data.settings, &head)
+
+        process_files_git(&repo, &data.settings, &head, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
+    let session = SessionId(random());
+
+    let mut sessions = data.sessions.lock().map_err(map_err)?;
+    sessions.insert(
+        session,
+        crate::Session {
+            checked_commits: result.1,
+        },
+    );
+
     println!(
         "git history with {} commits analyzed in {} ms",
-        result.len(),
+        result.0.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(&json!(result).to_string()))
+    Ok(HttpResponse::Ok().content_type("application/json").body(
+        &json!(CommitResponse {
+            commits: result.0,
+            session
+        })
+        .to_string(),
+    ))
 }
 
 /// Single commit query
@@ -73,20 +100,20 @@ async fn get_commits_hash(
     let result = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
         let commit = [repo.find_commit(Oid::from_str(&id)?)?];
-        process_files_git(&repo, &data.settings, &commit)
+        process_files_git(&repo, &data.settings, &commit, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
     println!(
         "git history with {} commits from {}analyzed in {} ms",
-        result.len(),
+        result.0.len(),
         id,
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result).to_string()))
+        .body(&json!(result.0).to_string()))
 }
 
 /// Multiple commits in request body
@@ -97,7 +124,7 @@ async fn get_commits_multi(
 ) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<Vec<CommitData>> {
+    let result = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let commits = request
@@ -105,20 +132,88 @@ async fn get_commits_multi(
             .map(|name| repo.find_commit(Oid::from_str(name)?))
             .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
 
-        process_files_git(&repo, &data.settings, &commits)
+        process_files_git(&repo, &data.settings, &commits, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
     println!(
         "git history from {} commits results {} analyzed in {} ms",
         request.len(),
-        result.len(),
+        result.0.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result).to_string()))
+        .body(&json!(result.0).to_string()))
+}
+
+#[derive(Deserialize)]
+struct SessionRequest {
+    session_id: String,
+    commits: Vec<String>,
+}
+
+#[actix_web::post("/sessions")]
+async fn get_commits_session(
+    data: web::Data<MyData>,
+    request: web::Json<SessionRequest>,
+) -> actix_web::Result<impl Responder> {
+    let time_load = Instant::now();
+
+    let repo = Repository::open(&data.settings.repo).map_err(map_err)?;
+
+    let commits = (|| -> Result<_> {
+        Ok(request
+            .commits
+            .iter()
+            .map(|name| repo.find_commit(Oid::from_str(name)?))
+            .collect::<std::result::Result<Vec<_>, git2::Error>>()?)
+    })()
+    .map_err::<AnyhowError, _>(|err| err.into())?;
+
+    println!("commits?: {}", commits.len());
+
+    let session_id = SessionId::from(&request.session_id as &str);
+    let mut sessions = data.sessions.lock().map_err(map_err)?;
+
+    println!(
+        "sessions: {:?}",
+        sessions
+            .iter()
+            .map(|ses| ses.0.to_string())
+            .collect::<Vec<_>>()
+    );
+    println!("request: {:?} {}", request.session_id, Some(SessionId::from(&request.session_id as &str)) == sessions.iter().next().map(|ses| *ses.0));
+
+    let session = if let Some(session) = sessions.get_mut(&session_id) {
+        session
+    } else {
+        return Ok(HttpResponse::BadRequest().body("Session not found"));
+    };
+
+    println!("session?: {}", session.checked_commits.len());
+
+    let (commits, checked_commits) = process_files_git(
+        &repo,
+        &data.settings,
+        &commits,
+        Some(std::mem::take(&mut session.checked_commits)),
+    )
+    .map_err(map_err)?;
+
+    session.checked_commits = checked_commits;
+
+    println!(
+        "git history from session {} results {} analyzed in {} ms",
+        request.session_id,
+        commits.len(),
+        time_load.elapsed().as_micros() as f64 / 1000.
+    );
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(&json!(commits).to_string()))
 }
 
 struct CommitWrap<'a>(Commit<'a>);
@@ -148,8 +243,9 @@ fn process_files_git(
     repo: &Repository,
     settings: &Settings,
     head: &[Commit],
-) -> Result<Vec<CommitData>> {
-    let mut checked_commits = HashSet::new();
+    checked_commits: Option<HashSet<Oid>>,
+) -> Result<(Vec<CommitData>, HashSet<Oid>)> {
+    let mut checked_commits = checked_commits.unwrap_or_else(|| HashSet::new());
 
     let mut next_refs =
         BinaryHeap::from_iter(head.iter().cloned().map(|commit| CommitWrap(commit)));
@@ -174,9 +270,9 @@ fn process_files_git(
                 parents: commit.parent_ids().map(|id| id.to_string()).collect(),
             });
             if settings.page_size <= ret.len() {
-                return Ok(ret);
+                return Ok((ret, checked_commits));
             }
         }
     }
-    Ok(ret)
+    Ok((ret, checked_commits))
 }

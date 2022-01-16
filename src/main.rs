@@ -1,6 +1,10 @@
 mod commits;
+mod sessions;
 
-use crate::commits::{get_commits, get_commits_hash, get_commits_multi};
+use crate::{
+    commits::{get_commits, get_commits_hash, get_commits_multi, get_commits_session},
+    sessions::{Session, SessionId},
+};
 #[cfg(debug_assertions)]
 use actix_files::NamedFile;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
@@ -9,11 +13,12 @@ use dunce::canonicalize;
 use git2::{Oid, Repository};
 use serde_json::json;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     convert::{TryFrom, TryInto},
     env,
     ffi::OsString,
     path::PathBuf,
+    sync::Mutex,
 };
 use structopt::StructOpt;
 
@@ -52,6 +57,7 @@ struct Opt {
 
 struct MyData {
     settings: Settings,
+    sessions: Mutex<HashMap<SessionId, Session>>,
 }
 
 #[cfg(debug_assertions)]
@@ -151,7 +157,10 @@ async fn main() -> std::io::Result<()> {
 
     println!("page_size: {}", settings.page_size);
 
-    let data = web::Data::new(MyData { settings });
+    let data = web::Data::new(MyData {
+        settings,
+        sessions: Mutex::new(HashMap::new()),
+    });
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
@@ -159,6 +168,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
+            .service(get_commits_session)
             .route("/refs", web::get().to(get_refs))
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
@@ -175,14 +185,6 @@ async fn main() -> std::io::Result<()> {
     .await;
 
     result
-}
-
-#[allow(dead_code)]
-struct MatchEntry {
-    commit: Oid,
-    path: PathBuf,
-    start: usize,
-    end: usize,
 }
 
 #[derive(Debug)]

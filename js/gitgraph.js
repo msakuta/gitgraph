@@ -82,6 +82,7 @@ export class GitGraph{
     allCommits = []
     refs = {}
     lastCommits = []
+    sessionId = null
 
     setArrow(a,child,parent){
         var str = "M"
@@ -375,15 +376,18 @@ export class GitGraph{
 
     scrollHandle(){
         const scrollBottom = $(window).scrollTop() + document.documentElement.clientHeight;
-        console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
+        // console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
         if(document.body.scrollHeight <= scrollBottom){
             if(!this.pendingFetch && this.lastCommits.length !== 0){
                 this.pendingFetch = true;
                 console.log(`Pending fetch for ${this.lastCommits[0]} started`);
-                fetch("/commits", {
+                fetch("/sessions", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(this.lastCommits),
+                    body: JSON.stringify({
+                        session_id: this.sessionId,
+                        commits: this.lastCommits,
+                    }),
                 })
                 .then((resp) => {
                     if(!resp.ok){
@@ -413,15 +417,17 @@ export var gitgraph = new GitGraph();
 $(window).scroll(() => gitgraph.scrollHandle());
 
 $(document).ready(function(){
-	var commitsAjax = $.get("commits")
-	var refsAjax = $.get("refs")
-	$.when(commitsAjax, refsAjax)
-	.then(function(commits, refs){
-		gitgraph.renderLog(commits[0])
-		gitgraph.parseLog(commits[0], $('#commits')[0])
-		gitgraph.parseRefs(refs[0])
-		gitgraph.updateRefs()
-		var svg = document.getElementById("graph")
-		gitgraph.updateSvg(svg, $('#commits')[0])
-	});
+    var commitsAjax = $.get("commits")
+    var refsAjax = $.get("refs")
+    $.when(commitsAjax, refsAjax)
+    .then(function(response, refs){
+        const {commits, session} = response[0];
+        gitgraph.sessionId = session;
+        gitgraph.renderLog(commits)
+        gitgraph.parseLog(commits, $('#commits')[0])
+        gitgraph.parseRefs(refs[0])
+        gitgraph.updateRefs()
+        var svg = document.getElementById("graph")
+        gitgraph.updateSvg(svg, $('#commits')[0])
+    });
 });
