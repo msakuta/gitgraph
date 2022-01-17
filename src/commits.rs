@@ -38,12 +38,30 @@ fn map_err(err: impl ToString) -> actix_web::Error {
     actix_web::error::ErrorInternalServerError(err.to_string())
 }
 
+fn new_session(data: &MyData, result: ProcessFilesGitResult) -> actix_web::Result<CommitResponse> {
+    let session = SessionId(random());
+
+    let mut sessions = data.sessions.lock().map_err(map_err)?;
+    sessions.insert(
+        session,
+        crate::Session {
+            checked_commits: result.checked,
+            continue_commits: result.continue_,
+        },
+    );
+
+    Ok(CommitResponse {
+        commits: result.commits,
+        session,
+    })
+}
+
 /// Default commit query (head or all, depending on settings)
 #[actix_web::get("/commits")]
 pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<(Vec<CommitData>, HashSet<Oid>, HashSet<Oid>)> {
+    let result = (|| -> Result<ProcessFilesGitResult> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let reference = if let Some(ref branch) = data.settings.branch {
@@ -64,30 +82,15 @@ pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<im
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
-    let session = SessionId(random());
-
-    let mut sessions = data.sessions.lock().map_err(map_err)?;
-    sessions.insert(
-        session,
-        crate::Session {
-            checked_commits: result.1,
-            continue_commits: result.2,
-        },
-    );
-
     println!(
         "git history with {} commits analyzed in {} ms",
-        result.0.len(),
+        result.commits.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
-    Ok(HttpResponse::Ok().content_type("application/json").body(
-        &json!(CommitResponse {
-            commits: result.0,
-            session
-        })
-        .to_string(),
-    ))
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(&json!(new_session(&data, result)?).to_string()))
 }
 
 /// Single commit query
@@ -107,14 +110,14 @@ async fn get_commits_hash(
 
     println!(
         "git history with {} commits from {}analyzed in {} ms",
-        result.0.len(),
+        result.commits.len(),
         id,
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result.0).to_string()))
+        .body(&json!(new_session(&data, result)?).to_string()))
 }
 
 /// Multiple commits in request body
@@ -140,13 +143,13 @@ async fn get_commits_multi(
     println!(
         "git history from {} commits results {} analyzed in {} ms",
         request.len(),
-        result.0.len(),
+        result.commits.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result.0).to_string()))
+        .body(&json!(new_session(&data, result)?).to_string()))
 }
 
 #[derive(Deserialize)]
@@ -186,7 +189,11 @@ async fn get_commits_session(
 
     println!("commits?: {}", commits.len());
 
-    let (commits, checked_commits, continue_commits) = process_files_git(
+    let ProcessFilesGitResult {
+        commits,
+        checked: checked_commits,
+        continue_: continue_commits,
+    } = process_files_git(
         &repo,
         &data.settings,
         &commits,
@@ -233,12 +240,18 @@ impl std::cmp::Ord for CommitWrap<'_> {
     }
 }
 
+struct ProcessFilesGitResult {
+    commits: Vec<CommitData>,
+    checked: HashSet<Oid>,
+    continue_: HashSet<Oid>,
+}
+
 fn process_files_git(
     repo: &Repository,
     settings: &Settings,
     head: &[Commit],
     checked_commits: Option<HashSet<Oid>>,
-) -> Result<(Vec<CommitData>, HashSet<Oid>, HashSet<Oid>)> {
+) -> Result<ProcessFilesGitResult> {
     let mut checked_commits = checked_commits.unwrap_or_else(|| HashSet::new());
 
     let mut next_refs =
@@ -264,17 +277,17 @@ fn process_files_git(
                 parents: commit.parent_ids().map(|id| id.to_string()).collect(),
             });
             if settings.page_size <= ret.len() {
-                return Ok((
-                    ret,
-                    checked_commits,
-                    next_refs.into_iter().map(|commit| commit.0.id()).collect(),
-                ));
+                return Ok(ProcessFilesGitResult {
+                    commits: ret,
+                    checked: checked_commits,
+                    continue_: next_refs.into_iter().map(|commit| commit.0.id()).collect(),
+                });
             }
         }
     }
-    Ok((
-        ret,
-        checked_commits,
-        next_refs.into_iter().map(|commit| commit.0.id()).collect(),
-    ))
+    Ok(ProcessFilesGitResult {
+        commits: ret,
+        checked: checked_commits,
+        continue_: next_refs.into_iter().map(|commit| commit.0.id()).collect(),
+    })
 }
