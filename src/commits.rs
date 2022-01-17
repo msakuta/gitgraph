@@ -194,6 +194,7 @@ async fn get_commits_session(
     let session = if let Some(session) = sessions.get_mut(&session_id) {
         session
     } else {
+        println!("Failed session? {:?}", session_id.to_string());
         return Ok(HttpResponse::BadRequest().body("Session not found"));
     };
 
