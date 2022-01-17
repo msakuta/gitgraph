@@ -56,7 +56,7 @@ struct MyData {
 
 #[cfg(debug_assertions)]
 macro_rules! get_static_file {
-    ($file:expr) => {{
+    ($file:expr, $_mime_type:expr) => {{
         async fn f() -> actix_web::Result<NamedFile> {
             (|| -> Result<NamedFile> {
                 let path = if &$file[..3] == "../" {
@@ -76,10 +76,10 @@ macro_rules! get_static_file {
 
 #[cfg(not(debug_assertions))]
 macro_rules! get_static_file {
-    ($file:expr) => {
+    ($file:expr, $mime_type:expr) => {
         || async {
             HttpResponse::Ok()
-                .content_type("text/html")
+                .content_type($mime_type)
                 .body(include_str!($file))
         }
     };
@@ -155,7 +155,7 @@ async fn main() -> std::io::Result<()> {
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
-            .route("/", web::get().to(get_static_file!("../index.html")))
+            .route("/", web::get().to(get_static_file!("../index.html", "text/html")))
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
@@ -163,11 +163,11 @@ async fn main() -> std::io::Result<()> {
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
                 "/js/jquery-3.1.0.min.js",
-                web::get().to(get_static_file!("../js/jquery-3.1.0.min.js")),
+                web::get().to(get_static_file!("../js/jquery-3.1.0.min.js", "text/javascript")),
             )
             .route(
                 "/js/gitgraph.js",
-                web::get().to(get_static_file!("../js/gitgraph.js")),
+                web::get().to(get_static_file!("../js/gitgraph.js", "text/javascript")),
             )
     })
     .bind(("127.0.0.1", 8084))?
