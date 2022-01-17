@@ -378,7 +378,7 @@ export class GitGraph{
         const scrollBottom = $(window).scrollTop() + document.documentElement.clientHeight;
         // console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
         if(document.body.scrollHeight <= scrollBottom){
-            if(!this.pendingFetch && this.lastCommits.length !== 0){
+            if(!this.pendingFetch && this.lastCommits.length !== 0 && this.sessionId){
                 this.pendingFetch = true;
                 console.log(`Pending fetch for ${this.lastCommits[0]} started`);
                 fetch("/sessions", {

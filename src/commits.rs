@@ -31,7 +31,7 @@ struct CommitData {
 #[derive(Serialize)]
 struct CommitResponse {
     commits: Vec<CommitData>,
-    session: SessionId,
+    session: Option<SessionId>,
 }
 
 fn map_err(err: impl ToString) -> actix_web::Error {
@@ -39,16 +39,22 @@ fn map_err(err: impl ToString) -> actix_web::Error {
 }
 
 fn new_session(data: &MyData, result: ProcessFilesGitResult) -> actix_web::Result<CommitResponse> {
-    let session = SessionId(random());
+    let session = if !result.continue_.is_empty() {
+        let session = SessionId(random());
 
-    let mut sessions = data.sessions.lock().map_err(map_err)?;
-    sessions.insert(
-        session,
-        crate::Session {
-            checked_commits: result.checked,
-            continue_commits: result.continue_,
-        },
-    );
+        let mut sessions = data.sessions.lock().map_err(map_err)?;
+        sessions.insert(
+            session,
+            crate::Session {
+                checked_commits: result.checked,
+                continue_commits: result.continue_,
+                sent_pages: 0,
+            },
+        );
+        Some(session)
+    } else {
+        None
+    };
 
     Ok(CommitResponse {
         commits: result.commits,
@@ -183,6 +189,7 @@ async fn get_commits_session(
     );
 
     if session.continue_commits.is_empty() {
+        sessions.remove(&session_id);
         return Ok(HttpResponse::Ok()
             .content_type("application/json")
             .body(&json!([]).to_string()));
@@ -209,12 +216,14 @@ async fn get_commits_session(
 
     session.checked_commits = checked_commits;
     session.continue_commits = continue_commits;
+    session.sent_pages += 1;
 
     println!(
-        "git history from session {} results {} continues {} analyzed in {} ms",
+        "git history from session {} results {} continues with {} commits, {}th page, analyzed in {} ms",
         request.session_id,
         commits.len(),
         session.continue_commits.len(),
+        session.sent_pages,
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
