@@ -43,7 +43,7 @@ fn map_err(err: impl ToString) -> actix_web::Error {
 pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<(Vec<CommitData>, HashSet<Oid>)> {
+    let result = (|| -> Result<(Vec<CommitData>, HashSet<Oid>, HashSet<Oid>)> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let reference = if let Some(ref branch) = data.settings.branch {
@@ -71,6 +71,7 @@ pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<im
         session,
         crate::Session {
             checked_commits: result.1,
+            continue_commits: result.2,
         },
     );
 
@@ -151,7 +152,6 @@ async fn get_commits_multi(
 #[derive(Deserialize)]
 struct SessionRequest {
     session_id: String,
-    commits: Vec<String>,
 }
 
 #[actix_web::post("/sessions")]
@@ -163,33 +163,8 @@ async fn get_commits_session(
 
     let repo = Repository::open(&data.settings.repo).map_err(map_err)?;
 
-    let commits = (|| -> Result<_> {
-        Ok(request
-            .commits
-            .iter()
-            .map(|name| repo.find_commit(Oid::from_str(name)?))
-            .collect::<std::result::Result<Vec<_>, git2::Error>>()?)
-    })()
-    .map_err::<AnyhowError, _>(|err| err.into())?;
-
-    println!("commits?: {}", commits.len());
-
     let session_id = SessionId::from(&request.session_id as &str);
     let mut sessions = data.sessions.lock().map_err(map_err)?;
-
-    println!(
-        "sessions: {:?}",
-        sessions
-            .iter()
-            .map(|ses| ses.0.to_string())
-            .collect::<Vec<_>>()
-    );
-    println!(
-        "request: {:?} {}",
-        request.session_id,
-        Some(SessionId::from(&request.session_id as &str))
-            == sessions.iter().next().map(|ses| *ses.0)
-    );
 
     let session = if let Some(session) = sessions.get_mut(&session_id) {
         session
@@ -200,7 +175,18 @@ async fn get_commits_session(
 
     println!("session?: {}", session.checked_commits.len());
 
-    let (commits, checked_commits) = process_files_git(
+    let commits = (|| -> Result<_> {
+        Ok(session
+            .continue_commits
+            .iter()
+            .map(|oid| repo.find_commit(*oid))
+            .collect::<std::result::Result<Vec<_>, git2::Error>>()?)
+    })()
+    .map_err::<AnyhowError, _>(|err| err.into())?;
+
+    println!("commits?: {}", commits.len());
+
+    let (commits, checked_commits, continue_commits) = process_files_git(
         &repo,
         &data.settings,
         &commits,
@@ -209,11 +195,13 @@ async fn get_commits_session(
     .map_err(map_err)?;
 
     session.checked_commits = checked_commits;
+    session.continue_commits = continue_commits;
 
     println!(
-        "git history from session {} results {} analyzed in {} ms",
+        "git history from session {} results {} continues {} analyzed in {} ms",
         request.session_id,
         commits.len(),
+        session.continue_commits.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
@@ -250,7 +238,7 @@ fn process_files_git(
     settings: &Settings,
     head: &[Commit],
     checked_commits: Option<HashSet<Oid>>,
-) -> Result<(Vec<CommitData>, HashSet<Oid>)> {
+) -> Result<(Vec<CommitData>, HashSet<Oid>, HashSet<Oid>)> {
     let mut checked_commits = checked_commits.unwrap_or_else(|| HashSet::new());
 
     let mut next_refs =
@@ -276,9 +264,17 @@ fn process_files_git(
                 parents: commit.parent_ids().map(|id| id.to_string()).collect(),
             });
             if settings.page_size <= ret.len() {
-                return Ok((ret, checked_commits));
+                return Ok((
+                    ret,
+                    checked_commits,
+                    next_refs.into_iter().map(|commit| commit.0.id()).collect(),
+                ));
             }
         }
     }
-    Ok((ret, checked_commits))
+    Ok((
+        ret,
+        checked_commits,
+        next_refs.into_iter().map(|commit| commit.0.id()).collect(),
+    ))
 }

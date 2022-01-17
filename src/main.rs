@@ -164,7 +164,10 @@ async fn main() -> std::io::Result<()> {
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
-            .route("/", web::get().to(get_static_file!("../index.html", "text/html")))
+            .route(
+                "/",
+                web::get().to(get_static_file!("../index.html", "text/html")),
+            )
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
@@ -173,7 +176,10 @@ async fn main() -> std::io::Result<()> {
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
                 "/js/jquery-3.1.0.min.js",
-                web::get().to(get_static_file!("../js/jquery-3.1.0.min.js", "text/javascript")),
+                web::get().to(get_static_file!(
+                    "../js/jquery-3.1.0.min.js",
+                    "text/javascript"
+                )),
             )
             .route(
                 "/js/gitgraph.js",

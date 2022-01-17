@@ -42,6 +42,7 @@ impl Serialize for SessionId {
 
 pub(crate) struct Session {
     pub checked_commits: HashSet<Oid>,
+    pub continue_commits: HashSet<Oid>,
 }
 
 #[cfg(test)]

@@ -386,7 +386,6 @@ export class GitGraph{
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         session_id: this.sessionId,
-                        commits: this.lastCommits,
                     }),
                 })
                 .then((resp) => {
