@@ -176,18 +176,24 @@ async fn get_commits_session(
         return Ok(HttpResponse::BadRequest().body("Session not found"));
     };
 
-    println!("session?: {}", session.checked_commits.len());
+    println!(
+        "session: checked_commits: {}, continue_commits: {}",
+        session.checked_commits.len(),
+        session.continue_commits.len()
+    );
 
-    let commits = (|| -> Result<_> {
-        Ok(session
-            .continue_commits
-            .iter()
-            .map(|oid| repo.find_commit(*oid))
-            .collect::<std::result::Result<Vec<_>, git2::Error>>()?)
-    })()
-    .map_err::<AnyhowError, _>(|err| err.into())?;
+    if session.continue_commits.is_empty() {
+        return Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(&json!([]).to_string()));
+    }
 
-    println!("commits?: {}", commits.len());
+    let commits = session
+        .continue_commits
+        .iter()
+        .map(|oid| repo.find_commit(*oid))
+        .collect::<std::result::Result<Vec<_>, git2::Error>>()
+        .map_err(map_err)?;
 
     let ProcessFilesGitResult {
         commits,
