@@ -38,13 +38,24 @@ pub(crate) struct Session {
 }
 
 #[cfg(test)]
-mod test{
-    use rand::prelude::*;
+mod test {
     use super::SessionId;
+    use rand::prelude::*;
+    use std::collections::HashMap;
 
     #[test]
     fn test_eq() {
         let s = random();
         assert_eq!(SessionId(s), SessionId(s));
+        assert_eq!(SessionId(s), SessionId::from(&SessionId(s).to_string() as &str));
+    }
+
+    #[test]
+    fn test_hashmap() {
+        let mut map = HashMap::<SessionId, i32>::new();
+        let s = random();
+        map.insert(SessionId(s), 42);
+        assert_eq!(map.get_mut(&SessionId(s)), Some(&mut 42));
+        assert_eq!(map.contains_key(&SessionId::from(&SessionId(s).to_string() as &str)), true);
     }
 }

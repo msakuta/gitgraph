@@ -184,7 +184,12 @@ async fn get_commits_session(
             .map(|ses| ses.0.to_string())
             .collect::<Vec<_>>()
     );
-    println!("request: {:?} {}", request.session_id, Some(SessionId::from(&request.session_id as &str)) == sessions.iter().next().map(|ses| *ses.0));
+    println!(
+        "request: {:?} {}",
+        request.session_id,
+        Some(SessionId::from(&request.session_id as &str))
+            == sessions.iter().next().map(|ses| *ses.0)
+    );
 
     let session = if let Some(session) = sessions.get_mut(&session_id) {
         session
