@@ -258,10 +258,9 @@ fn process_files_git(
     head: &[Commit],
     checked_commits: Option<HashSet<Oid>>,
 ) -> Result<ProcessFilesGitResult> {
-    let mut checked_commits = checked_commits.unwrap_or_else(|| HashSet::new());
+    let mut checked_commits = checked_commits.unwrap_or_else(HashSet::new);
 
-    let mut next_refs =
-        BinaryHeap::from_iter(head.iter().cloned().map(|commit| CommitWrap(commit)));
+    let mut next_refs = BinaryHeap::from_iter(head.iter().cloned().map(CommitWrap));
 
     let mut ret = vec![];
 

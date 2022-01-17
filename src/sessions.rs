@@ -17,10 +17,10 @@ impl From<&str> for SessionId {
     fn from(s: &str) -> Self {
         let mut ret = [0; 20];
         for (i, c) in s.bytes().enumerate() {
-            let c = if '0' as u8 <= c && c <= '9' as u8 {
-                c - '0' as u8
-            } else if 'a' as u8 <= c && c <= 'f' as u8 {
-                c - 'a' as u8 + 10
+            let c = if (b'0'..=b'9').contains(&c) {
+                c - b'0'
+            } else if (b'a'..=b'f').contains(&c) {
+                c - b'a' + 10
             } else {
                 panic!();
             };
