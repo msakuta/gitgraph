@@ -66,7 +66,7 @@ fn new_session(
 }
 
 /// Default commit query (head or all, depending on settings)
-#[get("/commits")]
+#[get("/commit-query")]
 pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
@@ -102,8 +102,8 @@ pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Resu
         .body(&json!(new_session(&data, result)?).to_string()))
 }
 
-/// Single commit query
-#[get("/commits/{id:.*}")]
+/// Single ref query
+#[get("/commit-query/{id:.*}")]
 async fn get_commits_hash(
     data: web::Data<ServerState>,
     web::Path(id): web::Path<String>,

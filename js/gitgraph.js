@@ -457,7 +457,7 @@ function newSession(commits, session){
 }
 
 $(document).ready(function(){
-    var commitsAjax = $.get("commits")
+    var commitsAjax = $.get("commit-query")
     var refsAjax = $.get("refs")
     $.when(commitsAjax, refsAjax)
     .then(function(response, refs){
@@ -481,7 +481,7 @@ $(document).ready(function(){
                     commitsElem.removeChild(commitsElem.firstChild);
                 }
                 gitgraph.reset();
-                fetch(`/commits/${event.target.value}`)
+                fetch(`/commit-query/${event.target.value}`)
                     .then(resp => resp.json())
                     .then(({commits, session}) => newSession(commits, session));
             });
