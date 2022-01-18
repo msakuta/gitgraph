@@ -91,12 +91,13 @@ export class GitGraph{
         $(window).scroll(() => this.scrollHandle());
 
         this.tipElem = document.createElement("div");
-        this.tipElem.style.backgroundColor = "#ffff7f";
-        this.tipElem.style.border = "solid 2px blue";
+        this.tipElem.style.padding = "0.5em";
+        this.tipElem.style.backgroundColor = "#cfcf9f";
+        this.tipElem.style.border = "solid 2px #3f3fff";
         this.tipElem.style.position = "absolute";
         this.tipElem.style.pointerEvents = "none";
         this.tipHashElem = document.createElement("div");
-        this.tipHashElem.style.fontFamily = "monotype";
+        this.tipHashElem.style.fontFamily = "monospace";
         this.tipElem.appendChild(this.tipHashElem);
         this.tipMessageElem = document.createElement("div");
         this.tipElem.appendChild(this.tipMessageElem);
