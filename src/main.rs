@@ -1,16 +1,18 @@
 mod commits;
+mod diff;
 mod sessions;
 
 use crate::{
     commits::{get_commits, get_commits_hash, get_commits_multi, get_commits_session},
+    diff::get_diff_stats,
     sessions::{Session, SessionId},
 };
 #[cfg(debug_assertions)]
 use actix_files::NamedFile;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use anyhow::Result;
 use dunce::canonicalize;
-use git2::{Oid, Repository};
+use git2::Repository;
 use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
@@ -131,24 +133,6 @@ impl From<anyhow::Error> for AnyhowError {
 
 impl actix_web::error::ResponseError for AnyhowError {}
 
-// #[get("/diff/{commit_a}/{commit_b}")]
-async fn get_diff(
-    data: web::Data<MyData>,
-    web::Path((commit_a, commit_b)): web::Path<(String, String)>,
-) -> std::result::Result<impl Responder, AnyhowError> {
-    let get_diff_int = || -> Result<git2::DiffStats> {
-        let repo = Repository::open(&data.settings.repo)?;
-        let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
-        let commit_b = repo.find_commit(Oid::from_str(&commit_b)?)?.tree()?;
-        let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
-        Ok(diff.stats()?)
-    };
-    let stats = get_diff_int()?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(format!("[{},{}]", stats.insertions(), stats.deletions())))
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let settings: Settings = Opt::from_args()
@@ -173,7 +157,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_commits_multi)
             .service(get_commits_session)
             .route("/refs", web::get().to(get_refs))
-            .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
+            .service(get_diff_stats)
             .route(
                 "/js/jquery-3.1.0.min.js",
                 web::get().to(get_static_file!(

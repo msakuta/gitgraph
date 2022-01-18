@@ -1,6 +1,6 @@
 //! API implementations for commits request
 
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{Commit, Oid, Repository};
 use rand::prelude::*;
@@ -63,7 +63,7 @@ fn new_session(data: &MyData, result: ProcessFilesGitResult) -> actix_web::Resul
 }
 
 /// Default commit query (head or all, depending on settings)
-#[actix_web::get("/commits")]
+#[get("/commits")]
 pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
@@ -100,7 +100,7 @@ pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<im
 }
 
 /// Single commit query
-#[actix_web::get("/commits/{id}")]
+#[get("/commits/{id}")]
 async fn get_commits_hash(
     data: web::Data<MyData>,
     web::Path(id): web::Path<String>,
@@ -127,7 +127,7 @@ async fn get_commits_hash(
 }
 
 /// Multiple commits in request body
-#[actix_web::post("/commits")]
+#[post("/commits")]
 async fn get_commits_multi(
     data: web::Data<MyData>,
     request: web::Json<Vec<String>>,
