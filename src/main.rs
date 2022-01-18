@@ -40,8 +40,13 @@ struct Opt {
     page_size: usize,
     #[structopt(short, long, help = "Verbose flag")]
     verbose: bool,
-    #[structopt(short, long, help = "Add an entry to list of extensions to search")]
-    extensions: Vec<String>,
+    #[structopt(
+        short,
+        long,
+        help = "The address to listen to.",
+        default_value = "0.0.0.0"
+    )]
+    listen_address: String,
     #[structopt(
         short,
         long,
@@ -150,12 +155,16 @@ async fn main() -> std::io::Result<()> {
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
     println!("page_size: {}", settings.page_size);
+    let listen_address = settings.listen_address.clone();
 
     let data = web::Data::new(MyData { settings });
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
-            .route("/", web::get().to(get_static_file!("../index.html", "text/html")))
+            .route(
+                "/",
+                web::get().to(get_static_file!("../index.html", "text/html")),
+            )
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
@@ -163,14 +172,17 @@ async fn main() -> std::io::Result<()> {
             .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
             .route(
                 "/js/jquery-3.1.0.min.js",
-                web::get().to(get_static_file!("../js/jquery-3.1.0.min.js", "text/javascript")),
+                web::get().to(get_static_file!(
+                    "../js/jquery-3.1.0.min.js",
+                    "text/javascript"
+                )),
             )
             .route(
                 "/js/gitgraph.js",
                 web::get().to(get_static_file!("../js/gitgraph.js", "text/javascript")),
             )
     })
-    .bind(("127.0.0.1", 8084))?
+    .bind((listen_address, 8084))?
     .run()
     .await;
 
@@ -193,7 +205,7 @@ struct Settings {
     depth: Option<usize>,
     page_size: usize,
     verbose: bool,
-    extensions: HashSet<OsString>,
+    listen_address: String,
     ignore_dirs: HashSet<OsString>,
 }
 
@@ -203,10 +215,6 @@ impl TryFrom<Opt> for Settings {
     type Error = anyhow::Error;
 
     fn try_from(src: Opt) -> std::result::Result<Self, Self::Error> {
-        let default_exts = [
-            ".sh", ".js", ".tcl", ".pl", ".py", ".rb", ".c", ".cpp", ".h", ".rc", ".rci", ".dlg",
-            ".pas", ".dpr", ".cs", ".rs",
-        ];
         let default_ignore_dirs = [".hg", ".svn", ".git", ".bzr", "node_modules", "target"]; // Probably we could ignore all directories beginning with a dot.
 
         Ok(Self {
@@ -221,15 +229,7 @@ impl TryFrom<Opt> for Settings {
             depth: src.depth,
             page_size: src.page_size,
             verbose: src.verbose,
-            extensions: if src.extensions.is_empty() {
-                default_exts.iter().map(|ext| ext[1..].into()).collect()
-            } else {
-                default_exts
-                    .iter()
-                    .map(|ext| ext[1..].into())
-                    .chain(src.extensions.iter().map(|ext| ext[1..].into()))
-                    .collect()
-            },
+            listen_address: src.listen_address,
             ignore_dirs: if src.ignore_dirs.is_empty() {
                 default_ignore_dirs.iter().map(|ext| ext.into()).collect()
             } else {
