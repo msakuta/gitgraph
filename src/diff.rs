@@ -1,11 +1,11 @@
-use crate::{AnyhowError, MyData};
+use crate::{AnyhowError, ServerState};
 use actix_web::{get, http, web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{DiffStatsFormat, Oid, Repository};
 
 #[get("/diff_summary/{commit_a}/{commit_b}")]
 pub(crate) async fn get_diff_summary(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     web::Path((commit_a, commit_b)): web::Path<(String, String)>,
 ) -> std::result::Result<impl Responder, AnyhowError> {
     let get_diff_int = || -> Result<git2::DiffStats> {
@@ -25,7 +25,7 @@ pub(crate) async fn get_diff_summary(
 
 #[get("/diff_stats/{commit_a}/{commit_b}")]
 pub(crate) async fn get_diff_stats(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     web::Path((commit_a, commit_b)): web::Path<(String, String)>,
 ) -> std::result::Result<impl Responder, AnyhowError> {
     let get_diff_int = || -> Result<_> {

@@ -13,7 +13,7 @@ use std::{
     time::Instant,
 };
 
-use super::{AnyhowError, MyData, SessionId, Settings};
+use super::{AnyhowError, ServerState, SessionId, Settings};
 
 #[derive(Serialize)]
 struct Stats {
@@ -38,7 +38,7 @@ fn map_err(err: impl ToString) -> actix_web::Error {
     actix_web::error::ErrorInternalServerError(err.to_string())
 }
 
-fn new_session(data: &MyData, result: ProcessFilesGitResult) -> actix_web::Result<CommitResponse> {
+fn new_session(data: &ServerState, result: ProcessFilesGitResult) -> actix_web::Result<CommitResponse> {
     let session = if !result.continue_.is_empty() {
         let session = SessionId(random());
 
@@ -64,7 +64,7 @@ fn new_session(data: &MyData, result: ProcessFilesGitResult) -> actix_web::Resul
 
 /// Default commit query (head or all, depending on settings)
 #[get("/commits")]
-pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
+pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
     let result = (|| -> Result<ProcessFilesGitResult> {
@@ -102,7 +102,7 @@ pub(crate) async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<im
 /// Single commit query
 #[get("/commits/{id}")]
 async fn get_commits_hash(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     web::Path(id): web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
@@ -129,7 +129,7 @@ async fn get_commits_hash(
 /// Multiple commits in request body
 #[post("/commits")]
 async fn get_commits_multi(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     request: web::Json<Vec<String>>,
 ) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
@@ -165,7 +165,7 @@ struct SessionRequest {
 
 #[actix_web::post("/sessions")]
 async fn get_commits_session(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     request: web::Json<SessionRequest>,
 ) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
@@ -234,7 +234,7 @@ async fn get_commits_session(
 
 #[get("/commits/{commit}/message")]
 pub(crate) async fn get_message(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     web::Path(commit): web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let message = (|| -> Result<_> {

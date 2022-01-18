@@ -56,7 +56,7 @@ struct Opt {
     ignore_dirs: Vec<String>,
 }
 
-struct MyData {
+struct ServerState {
     settings: Settings,
     sessions: Mutex<HashMap<SessionId, Session>>,
 }
@@ -92,7 +92,7 @@ macro_rules! get_static_file {
     };
 }
 
-async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
+async fn get_refs(data: web::Data<ServerState>) -> HttpResponse {
     if let Ok(repo) = Repository::open(&data.settings.repo) {
         if let Ok(refs) = repo.references() {
             HttpResponse::Ok().content_type("application/json").body(
@@ -140,7 +140,7 @@ async fn main() -> std::io::Result<()> {
 
     println!("page_size: {}", settings.page_size);
 
-    let data = web::Data::new(MyData {
+    let data = web::Data::new(ServerState {
         settings,
         sessions: Mutex::new(HashMap::new()),
     });
