@@ -38,7 +38,10 @@ fn map_err(err: impl ToString) -> actix_web::Error {
     actix_web::error::ErrorInternalServerError(err.to_string())
 }
 
-fn new_session(data: &ServerState, result: ProcessFilesGitResult) -> actix_web::Result<CommitResponse> {
+fn new_session(
+    data: &ServerState,
+    result: ProcessFilesGitResult,
+) -> actix_web::Result<CommitResponse> {
     let session = if !result.continue_.is_empty() {
         let session = SessionId(random());
 

@@ -187,18 +187,6 @@ export class GitGraph{
         }
     }
 
-    /** Parse raw output from `git show-ref` command and save the
-     * information internally for use with updateSvg.
-     * 
-     * @param {string} text
-     */
-    parseRefs(aRefs){
-        this.refs = {}
-        for(const refPair of aRefs){
-            this.refs[refPair[0]] = refPair[1];
-        }
-    }
-
     findCommit(hash){
         if(hash.length < 4)
             throw "Hash length shorter than 4"
@@ -460,7 +448,7 @@ $(document).ready(function(){
         gitgraph.sessionId = session;
         gitgraph.renderLog(commits)
         gitgraph.parseLog(commits, $('#commits')[0])
-        gitgraph.parseRefs(refs[0])
+        gitgraph.refs = refs[0];
         gitgraph.updateRefs()
         var svg = document.getElementById("graph")
         gitgraph.updateSvg(svg, $('#commits')[0])

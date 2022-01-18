@@ -101,9 +101,9 @@ async fn get_refs(data: web::Data<ServerState>) -> HttpResponse {
                         let r = r.ok()?;
                         let name = r.name()?;
                         let hash = r.peel_to_commit().ok()?.id().to_string();
-                        Some([name.to_owned(), hash])
+                        Some((name.to_owned(), hash))
                     })
-                    .collect::<Vec<_>>())
+                    .collect::<HashMap<_, _>>())
                 .to_string(),
             )
         } else {
