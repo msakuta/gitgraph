@@ -86,6 +86,8 @@ export class GitGraph{
     tipElem = null;
     tipMessageElem = null;
     tipDiffElem = null;
+    bgGroup = null;
+    columns = [];
 
     constructor(){
         $(window).scroll(() => this.scrollHandle());
@@ -104,6 +106,15 @@ export class GitGraph{
         this.tipDiffElem = document.createElement("div");
         this.tipElem.appendChild(this.tipDiffElem);
         $("#graphContainer")[0].appendChild(this.tipElem);
+    }
+
+    reset(){
+        this.allCommits = [];
+        this.lastCommits = [];
+        this.sessionId = null;
+        this.columns = [];
+        this.pendingFetch = false;
+        this.bgGroup = null;
     }
 
     setArrow(a,child,parent){
@@ -222,9 +233,6 @@ export class GitGraph{
             }
         }
     };
-
-    bgGroup = null;
-    columns = [];
 
     updateSvg(svg, commentElem, commits=undefined, yOffset=0){
         var width = parseInt(svg.style.width);
@@ -439,18 +447,45 @@ export class GitGraph{
 
 export var gitgraph = new GitGraph();
 
+function newSession(commits, session){
+    gitgraph.sessionId = session;
+    gitgraph.renderLog(commits)
+    gitgraph.parseLog(commits, $('#commits')[0])
+    gitgraph.updateRefs()
+    var svg = document.getElementById("graph")
+    gitgraph.updateSvg(svg, $('#commits')[0])
+}
+
 $(document).ready(function(){
     var commitsAjax = $.get("commits")
     var refsAjax = $.get("refs")
     $.when(commitsAjax, refsAjax)
     .then(function(response, refs){
         const {commits, session} = response[0];
-        gitgraph.sessionId = session;
-        gitgraph.renderLog(commits)
-        gitgraph.parseLog(commits, $('#commits')[0])
         gitgraph.refs = refs[0];
-        gitgraph.updateRefs()
-        var svg = document.getElementById("graph")
-        gitgraph.updateSvg(svg, $('#commits')[0])
+        const branchElem = $("#branch")[0];
+        if(branchElem){
+            for(const ref in refs[0]){
+                const optionElem = document.createElement("option");
+                optionElem.innerHTML = ref;
+                branchElem.appendChild(optionElem);
+            }
+            branchElem.addEventListener("change", event => {
+                console.log(`changed: ${event.target.value}`);
+                const svg = $("#graph")[0];
+                while(svg.firstChild){
+                    svg.removeChild(svg.firstChild);
+                }
+                const commitsElem = $("#commits")[0];
+                while(commitsElem.firstChild){
+                    commitsElem.removeChild(commitsElem.firstChild);
+                }
+                gitgraph.reset();
+                fetch(`/commits/${event.target.value}`)
+                    .then(resp => resp.json())
+                    .then(({commits, session}) => newSession(commits, session));
+            });
+        }
+        newSession(commits, session);
     });
 });

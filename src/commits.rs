@@ -103,7 +103,7 @@ pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Resu
 }
 
 /// Single commit query
-#[get("/commits/{id}")]
+#[get("/commits/{id:.*}")]
 async fn get_commits_hash(
     data: web::Data<ServerState>,
     web::Path(id): web::Path<String>,
@@ -112,8 +112,14 @@ async fn get_commits_hash(
 
     let result = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
-        let commit = [repo.find_commit(Oid::from_str(&id)?)?];
-        process_files_git(&repo, &data.settings, &commit, None)
+        let commit = if let Ok(reference) = repo.find_reference(&id) {
+            reference.peel_to_commit()?
+        } else {
+            repo.find_commit(Oid::from_str(&id)?)?
+        };
+        let commits = [commit];
+        let result = process_files_git(&repo, &data.settings, &commits, None);
+        result
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
