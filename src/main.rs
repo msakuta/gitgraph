@@ -10,7 +10,6 @@ use crate::{
 #[cfg(debug_assertions)]
 use actix_files::NamedFile;
 use actix_web::{web, App, HttpResponse, HttpServer};
-use anyhow::Result;
 use dunce::canonicalize;
 use git2::Repository;
 use serde_json::json;
@@ -66,7 +65,7 @@ struct MyData {
 macro_rules! get_static_file {
     ($file:expr, $_mime_type:expr) => {{
         async fn f() -> actix_web::Result<NamedFile> {
-            (|| -> Result<NamedFile> {
+            (|| -> anyhow::Result<NamedFile> {
                 let path = if &$file[..3] == "../" {
                     &$file[3..]
                 } else {
