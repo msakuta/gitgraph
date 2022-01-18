@@ -3,7 +3,7 @@ mod diff;
 mod sessions;
 
 use crate::{
-    commits::{get_commits, get_commits_hash, get_commits_multi, get_commits_session},
+    commits::{get_commits, get_commits_hash, get_commits_multi, get_commits_session, get_message},
     diff::{get_diff_stats, get_diff_summary},
     sessions::{Session, SessionId},
 };
@@ -155,6 +155,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_commits_hash)
             .service(get_commits_multi)
             .service(get_commits_session)
+            .service(get_message)
             .route("/refs", web::get().to(get_refs))
             .service(get_diff_summary)
             .service(get_diff_stats)

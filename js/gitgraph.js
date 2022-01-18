@@ -84,6 +84,8 @@ export class GitGraph{
     lastCommits = [];
     sessionId = null;
     tipElem = null;
+    tipMessageElem = null;
+    tipDiffElem = null;
 
     constructor(){
         $(window).scroll(() => this.scrollHandle());
@@ -93,6 +95,13 @@ export class GitGraph{
         this.tipElem.style.border = "solid 2px blue";
         this.tipElem.style.position = "absolute";
         this.tipElem.style.pointerEvents = "none";
+        this.tipHashElem = document.createElement("div");
+        this.tipHashElem.style.fontFamily = "monotype";
+        this.tipElem.appendChild(this.tipHashElem);
+        this.tipMessageElem = document.createElement("div");
+        this.tipElem.appendChild(this.tipMessageElem);
+        this.tipDiffElem = document.createElement("div");
+        this.tipElem.appendChild(this.tipDiffElem);
         $("#graphContainer")[0].appendChild(this.tipElem);
     }
 
@@ -313,16 +322,24 @@ export class GitGraph{
                 if(commit.stat){
                     stat = `<div style="insertions">+${commit.stat.insertions}</div><div class="deletions">-${commit.stat.deletions}</div>`;
                 }
-                this.tipElem.innerHTML = `<tt>${commit.hash}</tt><br>${commit.message}<br>${stat}`;
+                this.tipHashElem.innerHTML = commit.hash;
+                this.tipMessageElem.innerHTML = commit.message;
                 const graphRect = $("#graphContainer")[0].getBoundingClientRect();
                 const rect = group.getBoundingClientRect();
                 this.tipElem.style.left = `${rect.right - graphRect.left}px`;
                 this.tipElem.style.top = `${rect.top - graphRect.top}px`;
+                this.tipMessageElem.innerHTML = "";
+                this.tipDiffElem.innerHTML = stat;
+                fetch(`/commits/${commit.parents[0]}/message`)
+                    .then(resp => resp.text())
+                    .then(text => {
+                        this.tipMessageElem.innerHTML = `<pre>${text}</pre>`;
+                    });
                 if(commit.parents.length === 1){
                     fetch(`/diff_stats/${commit.parents[0]}/${commit.hash}`)
                         .then(resp => resp.text())
                         .then(text => {
-                            this.tipElem.innerHTML += `<pre>${text}</pre>`;
+                            this.tipDiffElem.innerHTML = `<pre>${text}</pre>`;
                         });
                 }
             });

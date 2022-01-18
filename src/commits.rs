@@ -1,6 +1,6 @@
 //! API implementations for commits request
 
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, http, post, web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{Commit, Oid, Repository};
 use rand::prelude::*;
@@ -230,6 +230,27 @@ async fn get_commits_session(
     Ok(HttpResponse::Ok()
         .content_type("application/json")
         .body(&json!(commits).to_string()))
+}
+
+#[get("/commits/{commit}/message")]
+pub(crate) async fn get_message(
+    data: web::Data<MyData>,
+    web::Path(commit): web::Path<String>,
+) -> actix_web::Result<impl Responder> {
+    let message = (|| -> Result<_> {
+        let repo = Repository::open(&data.settings.repo)?;
+        let commit = repo.find_commit(Oid::from_str(&commit)?)?;
+        commit
+            .message()
+            .map(|s| s.to_owned())
+            .ok_or(anyhow::anyhow!("Missing message"))
+    })()
+    .map_err(map_err)?;
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        // Keep cache for 1 week since git hash guarantees uniqueness
+        .header(http::header::CACHE_CONTROL, "max-age=604800")
+        .body(message))
 }
 
 struct CommitWrap<'a>(Commit<'a>);
