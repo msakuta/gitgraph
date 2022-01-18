@@ -4,7 +4,7 @@ mod sessions;
 
 use crate::{
     commits::{get_commits, get_commits_hash, get_commits_multi, get_commits_session},
-    diff::get_diff_stats,
+    diff::{get_diff_stats, get_diff_summary},
     sessions::{Session, SessionId},
 };
 #[cfg(debug_assertions)]
@@ -157,6 +157,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_commits_multi)
             .service(get_commits_session)
             .route("/refs", web::get().to(get_refs))
+            .service(get_diff_summary)
             .service(get_diff_stats)
             .route(
                 "/js/jquery-3.1.0.min.js",

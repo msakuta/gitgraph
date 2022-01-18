@@ -164,7 +164,7 @@ export class GitGraph{
                 }
             }
             if(parents.length === 1){
-                fetch(`/diff_stats/${parents[0]}/${commit.hash}`)
+                fetch(`/diff_summary/${parents[0]}/${commit.hash}`)
                 .then((result) => result.json())
                 .then((json) => {
                     commit.stat = {
@@ -318,6 +318,13 @@ export class GitGraph{
                 const rect = group.getBoundingClientRect();
                 this.tipElem.style.left = `${rect.right - graphRect.left}px`;
                 this.tipElem.style.top = `${rect.top - graphRect.top}px`;
+                if(commit.parents.length === 1){
+                    fetch(`/diff_stats/${commit.parents[0]}/${commit.hash}`)
+                        .then(resp => resp.text())
+                        .then(text => {
+                            this.tipElem.innerHTML += `<pre>${text}</pre>`;
+                        });
+                }
             });
             group.addEventListener("mouseleave", () => this.tipElem.style.display = "none");
             svg.appendChild(group);
