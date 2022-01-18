@@ -38,7 +38,7 @@ struct Opt {
     #[structopt(short, long, help = "Depth to search into git commit history")]
     depth: Option<usize>,
     #[structopt(
-        short,
+        short = "P",
         long,
         help = "Number of commits in a page",
         default_value = "50"
@@ -46,8 +46,20 @@ struct Opt {
     page_size: usize,
     #[structopt(short, long, help = "Verbose flag")]
     verbose: bool,
-    #[structopt(short, long, help = "Add an entry to list of extensions to search")]
-    extensions: Vec<String>,
+    #[structopt(
+        short,
+        long,
+        help = "The address to listen to.",
+        default_value = "0.0.0.0"
+    )]
+    listen_address: String,
+    #[structopt(
+        short = "p",
+        long,
+        help = "The port to listen to.",
+        default_value = "8084"
+    )]
+    listen_port: u16,
     #[structopt(
         short,
         long,
@@ -138,7 +150,8 @@ async fn main() -> std::io::Result<()> {
         .try_into()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-    println!("page_size: {}", settings.page_size);
+    let listen_address = settings.listen_address.clone();
+    let listen_port = settings.listen_port;
 
     let data = web::Data::new(ServerState {
         settings,
@@ -171,7 +184,7 @@ async fn main() -> std::io::Result<()> {
                 web::get().to(get_static_file!("../js/gitgraph.js", "text/javascript")),
             )
     })
-    .bind(("127.0.0.1", 8084))?
+    .bind((listen_address, listen_port))?
     .run()
     .await;
 
@@ -186,7 +199,8 @@ struct Settings {
     depth: Option<usize>,
     page_size: usize,
     verbose: bool,
-    extensions: HashSet<OsString>,
+    listen_address: String,
+    listen_port: u16,
     ignore_dirs: HashSet<OsString>,
 }
 
@@ -196,10 +210,6 @@ impl TryFrom<Opt> for Settings {
     type Error = anyhow::Error;
 
     fn try_from(src: Opt) -> std::result::Result<Self, Self::Error> {
-        let default_exts = [
-            ".sh", ".js", ".tcl", ".pl", ".py", ".rb", ".c", ".cpp", ".h", ".rc", ".rci", ".dlg",
-            ".pas", ".dpr", ".cs", ".rs",
-        ];
         let default_ignore_dirs = [".hg", ".svn", ".git", ".bzr", "node_modules", "target"]; // Probably we could ignore all directories beginning with a dot.
 
         Ok(Self {
@@ -214,15 +224,8 @@ impl TryFrom<Opt> for Settings {
             depth: src.depth,
             page_size: src.page_size,
             verbose: src.verbose,
-            extensions: if src.extensions.is_empty() {
-                default_exts.iter().map(|ext| ext[1..].into()).collect()
-            } else {
-                default_exts
-                    .iter()
-                    .map(|ext| ext[1..].into())
-                    .chain(src.extensions.iter().map(|ext| ext[1..].into()))
-                    .collect()
-            },
+            listen_address: src.listen_address,
+            listen_port: src.listen_port,
             ignore_dirs: if src.ignore_dirs.is_empty() {
                 default_ignore_dirs.iter().map(|ext| ext.into()).collect()
             } else {
