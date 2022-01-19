@@ -1,19 +1,19 @@
 //! API implementations for commits request
+mod meta;
+mod process_commits;
 
-use actix_web::{get, http, post, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use anyhow::Result;
-use git2::{Commit, Oid, Repository, Signature};
+use git2::{Oid, Repository};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{
-    collections::{BinaryHeap, HashSet},
-    convert::From,
-    iter::FromIterator,
-    time::Instant,
-};
+use std::{convert::From, time::Instant};
 
 use super::{AnyhowError, ServerState, SessionId, Settings};
+
+pub use meta::{get_message, get_meta};
+use process_commits::{process_commits, ProcessCommitsResult};
 
 #[derive(Serialize)]
 struct Stats {
@@ -40,7 +40,7 @@ fn map_err(err: impl ToString) -> actix_web::Error {
 
 fn new_session(
     data: &ServerState,
-    result: ProcessFilesGitResult,
+    result: ProcessCommitsResult,
 ) -> actix_web::Result<CommitResponse> {
     let session = if !result.continue_.is_empty() {
         let session = SessionId(random());
@@ -70,7 +70,7 @@ fn new_session(
 pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<ProcessFilesGitResult> {
+    let result = (|| -> Result<ProcessCommitsResult> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let reference = if let Some(ref branch) = data.settings.branch {
@@ -87,7 +87,7 @@ pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Resu
             vec![reference.peel_to_commit()?]
         };
 
-        process_files_git(&repo, &data.settings, &head, None)
+        process_commits(&repo, &data.settings, &head, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
@@ -118,8 +118,7 @@ async fn get_commits_hash(
             repo.find_commit(Oid::from_str(&id)?)?
         };
         let commits = [commit];
-        let result = process_files_git(&repo, &data.settings, &commits, None);
-        result
+        process_commits(&repo, &data.settings, &commits, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
@@ -151,7 +150,7 @@ async fn get_commits_multi(
             .map(|name| repo.find_commit(Oid::from_str(name)?))
             .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
 
-        process_files_git(&repo, &data.settings, &commits, None)
+        process_commits(&repo, &data.settings, &commits, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
@@ -211,11 +210,11 @@ async fn get_commits_session(
         .collect::<std::result::Result<Vec<_>, git2::Error>>()
         .map_err(map_err)?;
 
-    let ProcessFilesGitResult {
+    let ProcessCommitsResult {
         commits,
         checked: checked_commits,
         continue_: continue_commits,
-    } = process_files_git(
+    } = process_commits(
         &repo,
         &data.settings,
         &commits,
@@ -239,145 +238,4 @@ async fn get_commits_session(
     Ok(HttpResponse::Ok()
         .content_type("application/json")
         .body(&json!(commits).to_string()))
-}
-
-#[get("/commits/{commit}/message")]
-pub(crate) async fn get_message(
-    data: web::Data<ServerState>,
-    web::Path(commit): web::Path<String>,
-) -> actix_web::Result<impl Responder> {
-    let message = (|| -> Result<_> {
-        let repo = Repository::open(&data.settings.repo)?;
-        let commit = repo.find_commit(Oid::from_str(&commit)?)?;
-        commit
-            .message()
-            .map(|s| s.to_owned())
-            .ok_or(anyhow::anyhow!("Missing message"))
-    })()
-    .map_err(map_err)?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        // Keep cache for 1 week since git hash guarantees uniqueness
-        .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .body(message))
-}
-
-#[derive(Serialize)]
-struct EditStamp {
-    name: Option<String>,
-    email: Option<String>,
-    date: i64,
-}
-
-impl From<Signature<'_>> for EditStamp {
-    fn from(s: Signature) -> Self {
-        Self {
-            name: s.name().map(|s| s.to_owned()),
-            email: s.email().map(|s| s.to_owned()),
-            date: s.when().seconds(),
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct MetaResponse {
-    author: EditStamp,
-    committer: EditStamp,
-    message: String,
-}
-
-#[get("/commits/{commit}/meta")]
-pub(crate) async fn get_meta(
-    data: web::Data<ServerState>,
-    web::Path(commit): web::Path<String>,
-) -> actix_web::Result<impl Responder> {
-    let signature = (|| -> Result<_> {
-        let repo = Repository::open(&data.settings.repo)?;
-        let commit = repo.find_commit(Oid::from_str(&commit)?)?;
-        Ok(MetaResponse {
-            author: commit.author().into(),
-            committer: commit.committer().into(),
-            message: commit.message().unwrap_or("").to_owned(),
-        })
-    })()
-    .map_err(map_err)?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        // Keep cache for 1 week since git hash guarantees uniqueness
-        .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .body(json!(signature)))
-}
-
-struct CommitWrap<'a>(Commit<'a>);
-
-impl std::cmp::PartialEq for CommitWrap<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.time() == other.0.time()
-    }
-}
-
-impl std::cmp::Eq for CommitWrap<'_> {}
-
-impl std::cmp::PartialOrd for CommitWrap<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.time().partial_cmp(&other.0.time())
-    }
-}
-
-impl std::cmp::Ord for CommitWrap<'_> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        println!("Comparing {} and {}", self.0.id(), other.0.id());
-        self.0.time().cmp(&other.0.time())
-    }
-}
-
-struct ProcessFilesGitResult {
-    commits: Vec<CommitData>,
-    checked: HashSet<Oid>,
-    continue_: HashSet<Oid>,
-}
-
-fn process_files_git(
-    repo: &Repository,
-    settings: &Settings,
-    head: &[Commit],
-    checked_commits: Option<HashSet<Oid>>,
-) -> Result<ProcessFilesGitResult> {
-    let mut checked_commits = checked_commits.unwrap_or_else(HashSet::new);
-
-    let mut next_refs = BinaryHeap::from_iter(head.iter().cloned().map(CommitWrap));
-
-    let mut ret = vec![];
-
-    while let Some(CommitWrap(commit)) = next_refs.pop() {
-        if !checked_commits.insert(commit.id()) {
-            continue;
-        }
-
-        for parent in commit.parent_ids() {
-            if let Ok(parent) = repo.find_commit(parent) {
-                next_refs.push(CommitWrap(parent));
-            }
-        }
-
-        if let Some(message) = commit.summary() {
-            ret.push(CommitData {
-                hash: commit.id().to_string(),
-                message: message.to_owned(),
-                parents: commit.parent_ids().map(|id| id.to_string()).collect(),
-            });
-            if settings.page_size <= ret.len() {
-                return Ok(ProcessFilesGitResult {
-                    commits: ret,
-                    checked: checked_commits,
-                    continue_: next_refs.into_iter().map(|commit| commit.0.id()).collect(),
-                });
-            }
-        }
-    }
-    Ok(ProcessFilesGitResult {
-        commits: ret,
-        checked: checked_commits,
-        continue_: next_refs.into_iter().map(|commit| commit.0.id()).collect(),
-    })
 }
