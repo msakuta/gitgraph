@@ -102,6 +102,7 @@ export class GitGraph{
         this.tipHashElem.style.fontFamily = "monospace";
         this.tipElem.appendChild(this.tipHashElem);
         this.tipMessageElem = document.createElement("div");
+        this.tipMessageElem.style.fontFamily = "monospace";
         this.tipElem.appendChild(this.tipMessageElem);
         this.tipDiffElem = document.createElement("div");
         this.tipElem.appendChild(this.tipDiffElem);
@@ -319,7 +320,7 @@ export class GitGraph{
                 if(commit.stat){
                     stat = `<div style="insertions">+${commit.stat.insertions}</div><div class="deletions">-${commit.stat.deletions}</div>`;
                 }
-                this.tipHashElem.innerHTML = commit.hash;
+                this.tipHashElem.innerHTML = `<b>Commit</b> ${commit.hash}`;
                 this.tipMessageElem.innerHTML = commit.message;
                 const graphRect = $("#graphContainer")[0].getBoundingClientRect();
                 const rect = group.getBoundingClientRect();
@@ -327,10 +328,25 @@ export class GitGraph{
                 this.tipElem.style.top = `${rect.top - graphRect.top}px`;
                 this.tipMessageElem.innerHTML = "";
                 this.tipDiffElem.innerHTML = stat;
-                fetch(`/commits/${commit.parents[0]}/message`)
-                    .then(resp => resp.text())
-                    .then(text => {
-                        this.tipMessageElem.innerHTML = `<pre>${text}</pre>`;
+
+                function formatEdit(editor, caption){
+                    const date = new Date(editor.date * 1000);
+                    return `<div><b>${caption}:</b> ${editor.name} &lt;${editor.email}&gt; ${date.toLocaleString()}</div>`;
+                }
+
+                fetch(`/commits/${commit.parents[0]}/meta`)
+                    .then(resp => resp.json())
+                    .then(meta => {
+                        let s = "";
+                        if(meta.author.name){
+                            s += formatEdit(meta.author, "Author");
+                        }
+                        // Show committer only if it was amended
+                        if(meta.committer.name && meta.committer.date !== meta.author.date){
+                            s += formatEdit(meta.committer, "Committer");
+                        }
+                        s += `<pre>${meta.message}</pre>`;
+                        this.tipMessageElem.innerHTML = s;
                     });
                 if(commit.parents.length === 1){
                     fetch(`/diff_stats/${commit.parents[0]}/${commit.hash}`)
