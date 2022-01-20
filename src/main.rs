@@ -184,8 +184,8 @@ async fn main() -> std::io::Result<()> {
                 )),
             )
             .route(
-                "/js/gitgraph.js",
-                web::get().to(get_static_file!("../js/gitgraph.js", "text/javascript")),
+                "/js/bundle.js",
+                web::get().to(get_static_file!("../dist/bundle.js", "text/javascript")),
             )
     })
     .bind((listen_address, listen_port))?
