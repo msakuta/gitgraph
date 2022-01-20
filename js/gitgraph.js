@@ -78,10 +78,45 @@ function arc(cx,cy,r,start,end,stroke){
 }
 
 export class GitGraph{
-    commitMap = {}
-    allCommits = []
-    refs = {}
-    lastCommits = []
+    commitMap = {};
+    allCommits = [];
+    refs = {};
+    lastCommits = [];
+    sessionId = null;
+    tipElem = null;
+    tipMessageElem = null;
+    tipDiffElem = null;
+    bgGroup = null;
+    columns = [];
+
+    constructor(){
+        $(window).scroll(() => this.scrollHandle());
+
+        this.tipElem = document.createElement("div");
+        this.tipElem.style.padding = "0.5em";
+        this.tipElem.style.backgroundColor = "#cfcf9f";
+        this.tipElem.style.border = "solid 2px #3f3fff";
+        this.tipElem.style.position = "absolute";
+        this.tipElem.style.pointerEvents = "none";
+        this.tipHashElem = document.createElement("div");
+        this.tipHashElem.style.fontFamily = "monospace";
+        this.tipElem.appendChild(this.tipHashElem);
+        this.tipMessageElem = document.createElement("div");
+        this.tipMessageElem.style.fontFamily = "monospace";
+        this.tipElem.appendChild(this.tipMessageElem);
+        this.tipDiffElem = document.createElement("div");
+        this.tipElem.appendChild(this.tipDiffElem);
+        $("#graphContainer")[0].appendChild(this.tipElem);
+    }
+
+    reset(){
+        this.allCommits = [];
+        this.lastCommits = [];
+        this.sessionId = null;
+        this.columns = [];
+        this.pendingFetch = false;
+        this.bgGroup = null;
+    }
 
     setArrow(a,child,parent){
         var str = "M"
@@ -151,7 +186,7 @@ export class GitGraph{
                 }
             }
             if(parents.length === 1){
-                fetch(`/diff_stats/${parents[0]}/${commit.hash}`)
+                fetch(`/diff_summary/${parents[0]}/${commit.hash}`)
                 .then((result) => result.json())
                 .then((json) => {
                     commit.stat = {
@@ -161,18 +196,6 @@ export class GitGraph{
                     this.renderDiffStat(commit);
                 })
             }
-        }
-    }
-
-    /** Parse raw output from `git show-ref` command and save the
-     * information internally for use with updateSvg.
-     * 
-     * @param {string} text
-     */
-    parseRefs(aRefs){
-        this.refs = {}
-        for(const refPair of aRefs){
-            this.refs[refPair[0]] = refPair[1];
         }
     }
 
@@ -198,18 +221,6 @@ export class GitGraph{
         var delAngle = -Math.min(Math.PI, (Math.log10(commit.stat.deletions + 1) + 0) * Math.PI / 5)
         var delArc = arc(0, 0, rad, delAngle, 0, 'red')
         commit.svgGroup.appendChild(delArc)
-
-        const messageElem = $(`#${commit.hash}`)[0];
-        if(messageElem){
-            const deletionsElem = document.createElement("span");
-            deletionsElem.className = "deletions";
-            deletionsElem.innerHTML = `-${commit.stat.deletions}`;
-            messageElem.prepend(deletionsElem);
-            const insertionsElem = document.createElement("span");
-            insertionsElem.className = "insertions";
-            insertionsElem.innerHTML = `+${commit.stat.insertions} `;
-            messageElem.prepend(insertionsElem);
-        }
     }
 
     updateRefs(){
@@ -223,9 +234,6 @@ export class GitGraph{
             }
         }
     };
-
-    bgGroup = null;
-    columns = [];
 
     updateSvg(svg, commentElem, commits=undefined, yOffset=0){
         var width = parseInt(svg.style.width);
@@ -270,10 +278,10 @@ export class GitGraph{
         }
 
         var colorIdx = 0
-        for(var i = 0; i < commits.length; i++){
-            var commit = commits[i]
-            var rad = commit.stat ? 6 : 7
-            var maxX = 0
+        for(let i = 0; i < commits.length; i++){
+            const commit = commits[i];
+            const rad = commit.stat ? 6 : 7;
+            let maxX = 0;
 
             for(var j = 0; j < commit.parents.length; j++){
                 var parent = this.findCommit(commit.parents[j])
@@ -306,6 +314,49 @@ export class GitGraph{
             var c = circle(0, 0, rad, '#afafaf', '#000', commit.stat ? "5" : "1")
             group.appendChild(c);
             group.setAttribute("transform", `translate(${commit.x * columnWidth + columnOffset} ${commit.y})`);
+            group.addEventListener("mouseenter", (event) => {
+                this.tipElem.style.display = "block";
+                let stat = "";
+                if(commit.stat){
+                    stat = `<div style="insertions">+${commit.stat.insertions}</div><div class="deletions">-${commit.stat.deletions}</div>`;
+                }
+                this.tipHashElem.innerHTML = `<b>Commit</b> ${commit.hash}`;
+                this.tipMessageElem.innerHTML = commit.message;
+                const graphRect = $("#graphContainer")[0].getBoundingClientRect();
+                const rect = group.getBoundingClientRect();
+                this.tipElem.style.left = `${rect.right - graphRect.left}px`;
+                this.tipElem.style.top = `${rect.top - graphRect.top}px`;
+                this.tipMessageElem.innerHTML = "";
+                this.tipDiffElem.innerHTML = stat;
+
+                function formatEdit(editor, caption){
+                    const date = new Date(editor.date * 1000);
+                    return `<div><b>${caption}:</b> ${editor.name} &lt;${editor.email}&gt; ${date.toLocaleString()}</div>`;
+                }
+
+                fetch(`/commits/${commit.parents[0]}/meta`)
+                    .then(resp => resp.json())
+                    .then(meta => {
+                        let s = "";
+                        if(meta.author.name){
+                            s += formatEdit(meta.author, "Author");
+                        }
+                        // Show committer only if it was amended
+                        if(meta.committer.name && meta.committer.date !== meta.author.date){
+                            s += formatEdit(meta.committer, "Committer");
+                        }
+                        s += `<pre>${meta.message}</pre>`;
+                        this.tipMessageElem.innerHTML = s;
+                    });
+                if(commit.parents.length === 1){
+                    fetch(`/diff_stats/${commit.parents[0]}/${commit.hash}`)
+                        .then(resp => resp.text())
+                        .then(text => {
+                            this.tipDiffElem.innerHTML = `<pre>${text}</pre>`;
+                        });
+                }
+            });
+            group.addEventListener("mouseleave", () => this.tipElem.style.display = "none");
             svg.appendChild(group);
             commit.svgGroup = group;
 
@@ -375,15 +426,17 @@ export class GitGraph{
 
     scrollHandle(){
         const scrollBottom = $(window).scrollTop() + document.documentElement.clientHeight;
-        console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
+        // console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
         if(document.body.scrollHeight <= scrollBottom){
-            if(!this.pendingFetch && this.lastCommits.length !== 0){
+            if(!this.pendingFetch && this.lastCommits.length !== 0 && this.sessionId){
                 this.pendingFetch = true;
                 console.log(`Pending fetch for ${this.lastCommits[0]} started`);
-                fetch("/commits", {
+                fetch("/sessions", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(this.lastCommits),
+                    body: JSON.stringify({
+                        session_id: this.sessionId,
+                    }),
                 })
                 .then((resp) => {
                     if(!resp.ok){
@@ -410,18 +463,45 @@ export class GitGraph{
 
 export var gitgraph = new GitGraph();
 
-$(window).scroll(() => gitgraph.scrollHandle());
+function newSession(commits, session){
+    gitgraph.sessionId = session;
+    gitgraph.renderLog(commits)
+    gitgraph.parseLog(commits, $('#commits')[0])
+    gitgraph.updateRefs()
+    var svg = document.getElementById("graph")
+    gitgraph.updateSvg(svg, $('#commits')[0])
+}
 
 $(document).ready(function(){
-	var commitsAjax = $.get("commits")
-	var refsAjax = $.get("refs")
-	$.when(commitsAjax, refsAjax)
-	.then(function(commits, refs){
-		gitgraph.renderLog(commits[0])
-		gitgraph.parseLog(commits[0], $('#commits')[0])
-		gitgraph.parseRefs(refs[0])
-		gitgraph.updateRefs()
-		var svg = document.getElementById("graph")
-		gitgraph.updateSvg(svg, $('#commits')[0])
-	});
+    var commitsAjax = $.get("commit-query")
+    var refsAjax = $.get("refs")
+    $.when(commitsAjax, refsAjax)
+    .then(function(response, refs){
+        const {commits, session} = response[0];
+        gitgraph.refs = refs[0];
+        const branchElem = $("#branch")[0];
+        if(branchElem){
+            for(const ref in refs[0]){
+                const optionElem = document.createElement("option");
+                optionElem.innerHTML = ref;
+                branchElem.appendChild(optionElem);
+            }
+            branchElem.addEventListener("change", event => {
+                console.log(`changed: ${event.target.value}`);
+                const svg = $("#graph")[0];
+                while(svg.firstChild){
+                    svg.removeChild(svg.firstChild);
+                }
+                const commitsElem = $("#commits")[0];
+                while(commitsElem.firstChild){
+                    commitsElem.removeChild(commitsElem.firstChild);
+                }
+                gitgraph.reset();
+                fetch(`/commit-query/${event.target.value}`)
+                    .then(resp => resp.json())
+                    .then(({commits, session}) => newSession(commits, session));
+            });
+        }
+        newSession(commits, session);
+    });
 });

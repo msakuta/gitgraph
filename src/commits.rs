@@ -1,17 +1,19 @@
 //! API implementations for commits request
+mod meta;
+mod process_commits;
 
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use anyhow::Result;
-use git2::{Commit, Oid, Repository};
-use serde::Serialize;
+use git2::{Oid, Repository};
+use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{
-    collections::{BinaryHeap, HashSet},
-    iter::FromIterator,
-    time::Instant,
-};
+use std::{convert::From, time::Instant};
 
-use super::{AnyhowError, MyData, Settings};
+use super::{AnyhowError, ServerState, SessionId, Settings};
+
+pub use meta::{get_message, get_meta};
+use process_commits::{process_commits, ProcessCommitsResult};
 
 #[derive(Serialize)]
 struct Stats {
@@ -26,12 +28,49 @@ struct CommitData {
     parents: Vec<String>,
 }
 
+#[derive(Serialize)]
+struct CommitResponse {
+    commits: Vec<CommitData>,
+    session: Option<SessionId>,
+}
+
+fn map_err(err: impl ToString) -> actix_web::Error {
+    actix_web::error::ErrorInternalServerError(err.to_string())
+}
+
+fn new_session(
+    data: &ServerState,
+    result: ProcessCommitsResult,
+) -> actix_web::Result<CommitResponse> {
+    let session = if !result.continue_.is_empty() {
+        let session = SessionId(random());
+
+        let mut sessions = data.sessions.lock().map_err(map_err)?;
+        sessions.insert(
+            session,
+            crate::Session {
+                checked_commits: result.checked,
+                continue_commits: result.continue_,
+                sent_pages: 0,
+            },
+        );
+        Some(session)
+    } else {
+        None
+    };
+
+    Ok(CommitResponse {
+        commits: result.commits,
+        session,
+    })
+}
+
 /// Default commit query (head or all, depending on settings)
-#[actix_web::get("/commits")]
-async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responder> {
+#[get("/commit-query")]
+pub(crate) async fn get_commits(data: web::Data<ServerState>) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<Vec<CommitData>> {
+    let result = (|| -> Result<ProcessCommitsResult> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let reference = if let Some(ref branch) = data.settings.branch {
@@ -47,57 +86,63 @@ async fn get_commits(data: web::Data<MyData>) -> actix_web::Result<impl Responde
         } else {
             vec![reference.peel_to_commit()?]
         };
-        process_files_git(&repo, &data.settings, &head)
+
+        process_commits(&repo, &data.settings, &head, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
     println!(
         "git history with {} commits analyzed in {} ms",
-        result.len(),
+        result.commits.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result).to_string()))
+        .body(&json!(new_session(&data, result)?).to_string()))
 }
 
-/// Single commit query
-#[actix_web::get("/commits/{id}")]
+/// Single ref query
+#[get("/commit-query/{id:.*}")]
 async fn get_commits_hash(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     web::Path(id): web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
     let result = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
-        let commit = [repo.find_commit(Oid::from_str(&id)?)?];
-        process_files_git(&repo, &data.settings, &commit)
+        let commit = if let Ok(reference) = repo.find_reference(&id) {
+            reference.peel_to_commit()?
+        } else {
+            repo.find_commit(Oid::from_str(&id)?)?
+        };
+        let commits = [commit];
+        process_commits(&repo, &data.settings, &commits, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
     println!(
         "git history with {} commits from {}analyzed in {} ms",
-        result.len(),
+        result.commits.len(),
         id,
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result).to_string()))
+        .body(&json!(new_session(&data, result)?).to_string()))
 }
 
 /// Multiple commits in request body
-#[actix_web::post("/commits")]
+#[post("/commits")]
 async fn get_commits_multi(
-    data: web::Data<MyData>,
+    data: web::Data<ServerState>,
     request: web::Json<Vec<String>>,
 ) -> actix_web::Result<impl Responder> {
     let time_load = Instant::now();
 
-    let result = (|| -> Result<Vec<CommitData>> {
+    let result = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
 
         let commits = request
@@ -105,78 +150,92 @@ async fn get_commits_multi(
             .map(|name| repo.find_commit(Oid::from_str(name)?))
             .collect::<std::result::Result<Vec<_>, git2::Error>>()?;
 
-        process_files_git(&repo, &data.settings, &commits)
+        process_commits(&repo, &data.settings, &commits, None)
     })()
     .map_err::<AnyhowError, _>(|err| err.into())?;
 
     println!(
         "git history from {} commits results {} analyzed in {} ms",
         request.len(),
-        result.len(),
+        result.commits.len(),
         time_load.elapsed().as_micros() as f64 / 1000.
     );
 
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(&json!(result).to_string()))
+        .body(&json!(new_session(&data, result)?).to_string()))
 }
 
-struct CommitWrap<'a>(Commit<'a>);
-
-impl std::cmp::PartialEq for CommitWrap<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.time() == other.0.time()
-    }
+#[derive(Deserialize)]
+struct SessionRequest {
+    session_id: String,
 }
 
-impl std::cmp::Eq for CommitWrap<'_> {}
+#[actix_web::post("/sessions")]
+async fn get_commits_session(
+    data: web::Data<ServerState>,
+    request: web::Json<SessionRequest>,
+) -> actix_web::Result<impl Responder> {
+    let time_load = Instant::now();
 
-impl std::cmp::PartialOrd for CommitWrap<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.time().partial_cmp(&other.0.time())
+    let repo = Repository::open(&data.settings.repo).map_err(map_err)?;
+
+    let session_id = SessionId::from(&request.session_id as &str);
+    let mut sessions = data.sessions.lock().map_err(map_err)?;
+
+    let session = if let Some(session) = sessions.get_mut(&session_id) {
+        session
+    } else {
+        println!("Failed session? {:?}", session_id.to_string());
+        return Ok(HttpResponse::BadRequest().body("Session not found"));
+    };
+
+    println!(
+        "session: checked_commits: {}, continue_commits: {}",
+        session.checked_commits.len(),
+        session.continue_commits.len()
+    );
+
+    if session.continue_commits.is_empty() {
+        sessions.remove(&session_id);
+        return Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(&json!([]).to_string()));
     }
-}
 
-impl std::cmp::Ord for CommitWrap<'_> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        println!("Comparing {} and {}", self.0.id(), other.0.id());
-        self.0.time().cmp(&other.0.time())
-    }
-}
+    let commits = session
+        .continue_commits
+        .iter()
+        .map(|oid| repo.find_commit(*oid))
+        .collect::<std::result::Result<Vec<_>, git2::Error>>()
+        .map_err(map_err)?;
 
-fn process_files_git(
-    repo: &Repository,
-    settings: &Settings,
-    head: &[Commit],
-) -> Result<Vec<CommitData>> {
-    let mut checked_commits = HashSet::new();
+    let ProcessCommitsResult {
+        commits,
+        checked: checked_commits,
+        continue_: continue_commits,
+    } = process_commits(
+        &repo,
+        &data.settings,
+        &commits,
+        Some(std::mem::take(&mut session.checked_commits)),
+    )
+    .map_err(map_err)?;
 
-    let mut next_refs =
-        BinaryHeap::from_iter(head.iter().cloned().map(|commit| CommitWrap(commit)));
+    session.checked_commits = checked_commits;
+    session.continue_commits = continue_commits;
+    session.sent_pages += 1;
 
-    let mut ret = vec![];
+    println!(
+        "git history from session {} results {} continues with {} commits, {}th page, analyzed in {} ms",
+        request.session_id,
+        commits.len(),
+        session.continue_commits.len(),
+        session.sent_pages,
+        time_load.elapsed().as_micros() as f64 / 1000.
+    );
 
-    while let Some(CommitWrap(commit)) = next_refs.pop() {
-        if !checked_commits.insert(commit.id()) {
-            continue;
-        }
-
-        for parent in commit.parent_ids() {
-            if let Ok(parent) = repo.find_commit(parent) {
-                next_refs.push(CommitWrap(parent));
-            }
-        }
-
-        if let Some(message) = commit.summary() {
-            ret.push(CommitData {
-                hash: commit.id().to_string(),
-                message: message.to_owned(),
-                parents: commit.parent_ids().map(|id| id.to_string()).collect(),
-            });
-            if settings.page_size <= ret.len() {
-                return Ok(ret);
-            }
-        }
-    }
-    Ok(ret)
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(&json!(commits).to_string()))
 }

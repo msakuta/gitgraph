@@ -1,19 +1,28 @@
 mod commits;
+mod diff;
+mod sessions;
 
-use crate::commits::{get_commits, get_commits_hash, get_commits_multi};
+use crate::{
+    commits::{
+        get_commits, get_commits_hash, get_commits_multi, get_commits_session, get_message,
+        get_meta,
+    },
+    diff::{get_diff_stats, get_diff_summary},
+    sessions::{Session, SessionId},
+};
 #[cfg(debug_assertions)]
 use actix_files::NamedFile;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use anyhow::Result;
+use actix_web::{web, App, HttpResponse, HttpServer};
 use dunce::canonicalize;
-use git2::{Oid, Repository};
+use git2::Repository;
 use serde_json::json;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     convert::{TryFrom, TryInto},
     env,
     ffi::OsString,
     path::PathBuf,
+    sync::Mutex,
 };
 use structopt::StructOpt;
 
@@ -62,15 +71,16 @@ struct Opt {
     ignore_dirs: Vec<String>,
 }
 
-struct MyData {
+struct ServerState {
     settings: Settings,
+    sessions: Mutex<HashMap<SessionId, Session>>,
 }
 
 #[cfg(debug_assertions)]
 macro_rules! get_static_file {
     ($file:expr, $_mime_type:expr) => {{
         async fn f() -> actix_web::Result<NamedFile> {
-            (|| -> Result<NamedFile> {
+            (|| -> anyhow::Result<NamedFile> {
                 let path = if &$file[..3] == "../" {
                     &$file[3..]
                 } else {
@@ -97,7 +107,7 @@ macro_rules! get_static_file {
     };
 }
 
-async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
+async fn get_refs(data: web::Data<ServerState>) -> HttpResponse {
     if let Ok(repo) = Repository::open(&data.settings.repo) {
         if let Ok(refs) = repo.references() {
             HttpResponse::Ok().content_type("application/json").body(
@@ -106,9 +116,9 @@ async fn get_refs(data: web::Data<MyData>) -> HttpResponse {
                         let r = r.ok()?;
                         let name = r.name()?;
                         let hash = r.peel_to_commit().ok()?.id().to_string();
-                        Some([name.to_owned(), hash])
+                        Some((name.to_owned(), hash))
                     })
-                    .collect::<Vec<_>>())
+                    .collect::<HashMap<_, _>>())
                 .to_string(),
             )
         } else {
@@ -137,24 +147,6 @@ impl From<anyhow::Error> for AnyhowError {
 
 impl actix_web::error::ResponseError for AnyhowError {}
 
-// #[get("/diff/{commit_a}/{commit_b}")]
-async fn get_diff(
-    data: web::Data<MyData>,
-    web::Path((commit_a, commit_b)): web::Path<(String, String)>,
-) -> std::result::Result<impl Responder, AnyhowError> {
-    let get_diff_int = || -> Result<git2::DiffStats> {
-        let repo = Repository::open(&data.settings.repo)?;
-        let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
-        let commit_b = repo.find_commit(Oid::from_str(&commit_b)?)?.tree()?;
-        let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
-        Ok(diff.stats()?)
-    };
-    let stats = get_diff_int()?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(format!("[{},{}]", stats.insertions(), stats.deletions())))
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let settings: Settings = Opt::from_args()
@@ -164,7 +156,10 @@ async fn main() -> std::io::Result<()> {
     let listen_address = settings.listen_address.clone();
     let listen_port = settings.listen_port;
 
-    let data = web::Data::new(MyData { settings });
+    let data = web::Data::new(ServerState {
+        settings,
+        sessions: Mutex::new(HashMap::new()),
+    });
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
@@ -175,8 +170,12 @@ async fn main() -> std::io::Result<()> {
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
+            .service(get_commits_session)
+            .service(get_message)
+            .service(get_meta)
             .route("/refs", web::get().to(get_refs))
-            .route("/diff_stats/{commit_a}/{commit_b}", web::get().to(get_diff))
+            .service(get_diff_summary)
+            .service(get_diff_stats)
             .route(
                 "/js/jquery-3.1.0.min.js",
                 web::get().to(get_static_file!(
@@ -194,14 +193,6 @@ async fn main() -> std::io::Result<()> {
     .await;
 
     result
-}
-
-#[allow(dead_code)]
-struct MatchEntry {
-    commit: Oid,
-    path: PathBuf,
-    start: usize,
-    end: usize,
 }
 
 #[derive(Debug)]
