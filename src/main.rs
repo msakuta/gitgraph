@@ -21,6 +21,7 @@ use std::{
     convert::{TryFrom, TryInto},
     env,
     ffi::OsString,
+    io::Read,
     path::PathBuf,
     sync::Mutex,
 };
@@ -145,17 +146,24 @@ impl From<anyhow::Error> for AnyhowError {
     }
 }
 
-async fn get_index(_data: web::Data<ServerState>) -> impl Responder {
-    let file = include_str!("../public/index.html");
+async fn get_index(_data: web::Data<ServerState>) -> actix_web::Result<impl Responder> {
     #[cfg(debug_assertions)]
-    let file_name = "http://localhost:8080/bundle.js";
+    let file = {
+        let path = "./public/index.html";
+        let abs_path = std::env::current_dir()?.join(path);
+        println!("path: {:?}", abs_path);
+        let mut file = String::new();
+        std::fs::File::open(abs_path)?.read_to_string(&mut file)?;
+        let file_name = "http://localhost:8080/bundle.js";
+        file.replace("{{source}}", file_name)
+    };
     #[cfg(not(debug_assertions))]
-    let file_name = "./js/bundle.js";
-    let file = file.replace("{{source}}", file_name);
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .header("Access-Control-Allow-Origin", "*")
-        .body(file)
+    let file = {
+        let file = include_str!("../public/index.html");
+        let file_name = "./js/bundle.js";
+        file.replace("{{source}}", file_name)
+    };
+    Ok(HttpResponse::Ok().content_type("text/html").body(&file))
 }
 
 impl actix_web::error::ResponseError for AnyhowError {}
