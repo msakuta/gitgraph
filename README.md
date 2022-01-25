@@ -24,3 +24,6 @@ http://msakuta.github.io/gitgraph
 * `npm i`
 * `npm start`
 * Browse http://localhost:8084/
+
+You can edit JS files and they will hot reload.
+Be aware that Rust code won't reload.
