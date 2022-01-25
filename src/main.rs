@@ -188,13 +188,6 @@ async fn main() -> std::io::Result<()> {
             .service(get_diff_summary)
             .service(get_diff_stats)
             .route(
-                "/js/jquery-3.1.0.min.js",
-                web::get().to(get_static_file!(
-                    "../js/jquery-3.1.0.min.js",
-                    "text/javascript"
-                )),
-            )
-            .route(
                 "/js/bundle.js",
                 web::get().to(get_static_file!("../dist/bundle.js", "text/javascript")),
             )

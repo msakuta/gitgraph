@@ -1,4 +1,4 @@
-
+import $ from 'jquery';
 
 const NS="http://www.w3.org/2000/svg";
 const columnOffset = 20;
