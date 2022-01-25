@@ -13,13 +13,13 @@ http://msakuta.github.io/gitgraph
 ## How to build
 
 * Install [Rust](https://www.rust-lang.org/tools/install)
+* Install [Node.js](https://nodejs.org/en/)
 * `cargo build --release`
 * Binary will be produced in `target/release`
 
 
 ## How to run development server
 
-* Install npm
 * `cargo run`
 * `npm i`
 * `npm start`
