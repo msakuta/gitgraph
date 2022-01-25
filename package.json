@@ -1,10 +1,11 @@
 {
   "scripts": {
     "build": "webpack",
-    "start": "webpack-dev-server --config webpack.dev.js"
+    "start": "webpack-dev-server"
   },
   "dependencies": {
     "webpack": "^5.66.0",
-    "webpack-cli": "^4.9.1"
+    "webpack-cli": "^4.9.1",
+    "webpack-dev-server": "^4.7.3"
   }
 }

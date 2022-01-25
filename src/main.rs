@@ -12,7 +12,7 @@ use crate::{
 };
 #[cfg(debug_assertions)]
 use actix_files::NamedFile;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use dunce::canonicalize;
 use git2::Repository;
 use serde_json::json;
@@ -145,6 +145,19 @@ impl From<anyhow::Error> for AnyhowError {
     }
 }
 
+async fn get_index(_data: web::Data<ServerState>) -> impl Responder {
+    let file = include_str!("../public/index.html");
+    #[cfg(debug_assertions)]
+    let file_name = "http://localhost:8080/bundle.js";
+    #[cfg(not(debug_assertions))]
+    let file_name = "./js/bundle.js";
+    let file = file.replace("{{source}}", file_name);
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .header("Access-Control-Allow-Origin", "*")
+        .body(file)
+}
+
 impl actix_web::error::ResponseError for AnyhowError {}
 
 #[actix_web::main]
@@ -160,13 +173,11 @@ async fn main() -> std::io::Result<()> {
         settings,
         sessions: Mutex::new(HashMap::new()),
     });
+    println!("Serving at {}:{}", listen_address, listen_port);
     let result = HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
-            .route(
-                "/",
-                web::get().to(get_static_file!("../index.html", "text/html")),
-            )
+            .route("/", web::get().to(get_index))
             .service(get_commits)
             .service(get_commits_hash)
             .service(get_commits_multi)
