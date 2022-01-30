@@ -93,7 +93,7 @@
     getRefs();
 </script>
 
-<div>
+<div class="headerContainer">
     <label>Branch:
         <select on:change={branchChanged}>
             {#each branches as branch}
@@ -102,27 +102,43 @@
         </select>
         <button on:click={getRefs}>Get refs</button>
     </label>
+    <div style="text-align: center">Powered by 
+        <a href="https://github.com/sveltejs/svelte">Svelte</a>
+    </div>
 </div>
 
-<svg bind:this={svg} width="{graphWidth}px" height="400px" style="width: {graphWidth}px; height: 400px;"></svg>
+<div class="graphContainer">
+    <svg bind:this={svg} width="{graphWidth}px" height="400px" style="width: {graphWidth}px; height: 400px;"></svg>
 
-<div class="messages" style="left: {graphWidth}px">
-    {#each commits as commit, index}
-        <div class={index % 2 === 0 ? 'light' : 'dark'}
-            style="position: absolute; left: 0px; top:{index * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: {rowHeight}px">
-            <span class="valign" id={commit.hash}>
-                {commit.hash.substr(0, 6)} {commit.message}
-            </span>
-        </div>
-    {/each}
+    <div class="messages" style="left: {graphWidth}px">
+        {#each commits as commit, index}
+            <div class={index % 2 === 0 ? 'light' : 'dark'}
+                style="position: absolute; left: 0px; top:{index * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: {rowHeight}px">
+                <span class="valign" id={commit.hash}>
+                    {commit.hash.substr(0, 6)} {commit.message}
+                </span>
+            </div>
+        {/each}
+    </div>
 </div>
 
 <Details message={message}/>
 
-<hr>
-<div style="text-align: center">Powered by 
-	<a href="https://github.com/sveltejs/svelte">Svelte</a>
-</div>
 
 <style>
+    .headerContainer{
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 10%;
+    }
+    .graphContainer{
+        position: fixed;
+        top: 10%;
+        left: 0;
+        width: 100%;
+        height: 40%;
+        overflow-y: scroll;
+	}
 </style>
