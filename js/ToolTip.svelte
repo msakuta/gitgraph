@@ -4,7 +4,7 @@
     export let tipLeft = 0;
     export let tipTop = 0;
     export let tipMeta = {};
-    export let tipDiff = "";
+    export let tipDiffStats = "";
     let tipMessageElem;
     let tipDiffElem;
 </script>
@@ -24,7 +24,9 @@
     {:else}
     <p>{tipCommit.message}</p>
     {/if}
-    <div bind:this={tipDiffElem} style="font-familiy: monospace">{tipDiff}</div>
+    <div bind:this={tipDiffElem} style="font-familiy: monospace">
+        <pre>{tipDiffStats}</pre>
+    </div>
 </div>
 
 <style>

@@ -21,7 +21,7 @@
 
     let showToolTip = false;
     let tipMeta = {};
-    let tipDiff = "";
+    let tipDiffStats = "";
     let tipCommit = "";
     let tipLeft = 0;
     let tipTop = 0;
@@ -52,6 +52,7 @@
                     {
                         showCommit: setTipCommit,
                         showMeta: setTipMeta,
+                        showDiffStats: setTipDiffStats,
                         hideMessage: hideTipMessage,
                         showDetails,
                     }
@@ -77,6 +78,10 @@
 
     function setTipMeta(meta){
         tipMeta = meta;
+    }
+
+    function setTipDiffStats(diffStats){
+        tipDiffStats = diffStats;
     }
 
     function hideTipMessage(){
@@ -133,6 +138,7 @@
                     graphWidth = gitgraph.updateSvg(svg, commits, yOffset, {
                         showCommit: setTipCommit,
                         showMeta: setTipMeta,
+                        showDiffStats: setTipDiffStats,
                         hideMessage: hideTipMessage,
                         showDetails,
                     }, graphWidth);
@@ -188,7 +194,7 @@
 <Details commit={selectedCommit} meta={detailMeta} message={detailMessage}/>
 
 {#if showToolTip}
-<ToolTip {tipCommit} {tipLeft} {tipTop} {tipMeta} {tipDiff}/>
+<ToolTip {tipCommit} {tipLeft} {tipTop} {tipMeta} {tipDiffStats}/>
 {/if}
 
 <style>
