@@ -1,8 +1,14 @@
 <script>
     import Editor from "./Editor.svelte";
+    import Foldable from "./Foldable.svelte";
     export let commit;
     export let meta = {};
-    export let hunks = [];
+    export let files = [];
+    let defaultVisible = false;
+    $: if(commit && commit.stat){
+        defaultVisible = (commit.stat.insertions + commit.stat.deletions) < 20;
+        console.log(`stats: ${commit.stat.insertions} ${commit.stat.deletions} ${defaultVisible}`);
+    }
 </script>
 
 <div class="details">
@@ -23,15 +29,20 @@
         {/if}
     {/if}
 
-    Hunks: {hunks.length}
+    Files: {files.length}
 
-    <div class="hunk" style="position: relative; text-align: center">
-        {#each hunks as hunk}
-            <div style="text-align: left; background-color: #ffffcf; margin: 4px">
-                <pre>
-                    {hunk}
-                </pre>
-            </div>
+    <div class="hunk">
+        {#each files as file}
+            <Foldable {defaultVisible}>
+                <div slot="header" class="fileHeader">{file.file}</div>
+                <div slot="content" style="text-align: left; background-color: #ffffcf; margin: 4px">
+                    {#each file.hunks as hunk}
+                    <pre>
+                        {hunk}
+                    </pre>
+                    {/each}
+                </div>
+            </Foldable>
         {/each}
     </div>
 </div>
@@ -50,5 +61,9 @@
 	}
     .hunk {
         text-align: left;
+        position: relative;
+    }
+    .fileHeader:hover {
+        background-color: #ffffcf;
     }
 </style>

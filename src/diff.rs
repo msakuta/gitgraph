@@ -2,7 +2,7 @@ use crate::{AnyhowError, ServerState};
 use actix_web::{get, http, web, HttpResponse, Responder};
 use anyhow::Result;
 use git2::{DiffStatsFormat, Oid, Repository};
-use std::path::PathBuf;
+use serde::Serialize;
 
 #[get("/diff_summary/{commit_a}/{commit_b}")]
 pub(crate) async fn get_diff_summary(
@@ -46,6 +46,12 @@ pub(crate) async fn get_diff_stats(
         .body(buf))
 }
 
+#[derive(Serialize, Debug)]
+struct FileDiff {
+    file: String,
+    hunks: Vec<String>,
+}
+
 #[get("/diff/{commit_a}/{commit_b}")]
 pub(crate) async fn get_diff(
     data: web::Data<ServerState>,
@@ -58,34 +64,60 @@ pub(crate) async fn get_diff(
         let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
 
         let mut ret = vec![];
-        let mut hunk_header: Option<(PathBuf, String)> = None;
+        let mut hunk_header: Option<(String, String)> = None;
         let mut hunk_accum = String::new();
+        let mut file_accum = None;
 
-        let mut flush_header = |hunk_header: &mut Option<(PathBuf, String)>,
+        fn is_new_file(file_accum: &Option<FileDiff>, hunk_header: &Option<(String, String)>) -> bool {
+            let file_accum = if let Some(file_accum) = file_accum {
+                file_accum
+            } else {
+                return false;
+            };
+            let hunk_header = if let Some(hunk_header) = hunk_header {
+                hunk_header
+            } else {
+                return false;
+            };
+            file_accum.file != hunk_header.0
+        }
+
+        let mut flush_header = |file_accum: &mut Option<FileDiff>, hunk_header: &mut Option<(String, String)>,
                                 hunk_accum: &mut String| {
-            if let Some((path, _header)) = std::mem::take(hunk_header) {
-                ret.push(format!(
-                    "Path: {}\n{}",
-                    path.to_str().unwrap_or(""),
-                    hunk_accum
-                ));
+            if let Some(hunk_header) = std::mem::take(hunk_header) {
+                if is_new_file(&file_accum, &Some(hunk_header)) {
+                    if let Some(file_accum) = std::mem::take(file_accum) {
+                        ret.push(file_accum);
+                    }
+                } else if let Some(file_accum) = file_accum {
+                    file_accum.hunks.push(std::mem::take(hunk_accum));
+                }
+
                 hunk_accum.clear();
             }
         };
 
         diff.print(git2::DiffFormat::Patch, |delta, hunk, line| {
+            if file_accum.is_none() {
+                if let Some(file) = delta.new_file().path().and_then(|s| s.to_str()) {
+                    file_accum = Some(FileDiff{
+                        file: file.to_owned(),
+                        hunks: vec![],
+                    })
+                }
+            }
             if let Some(hunk) = hunk {
                 if let (Some(path), Ok(header), Ok(content)) = (
-                    delta.new_file().path(),
+                    delta.new_file().path().and_then(|s| s.to_str()),
                     std::str::from_utf8(hunk.header()),
                     std::str::from_utf8(line.content()),
                 ) {
                     if hunk_header
                         .as_ref()
-                        .map(|h: &(PathBuf, String)| h.0 != path || h.1 != header)
+                        .map(|h: &(String, String)| h.0 != path || h.1 != header)
                         .unwrap_or(true)
                     {
-                        flush_header(&mut hunk_header, &mut hunk_accum);
+                        flush_header(&mut file_accum, &mut hunk_header, &mut hunk_accum);
                         hunk_header = Some((path.to_owned(), header.to_owned()));
                     }
                     hunk_accum += &format!(
@@ -103,7 +135,7 @@ pub(crate) async fn get_diff(
             true
         })?;
 
-        flush_header(&mut hunk_header, &mut hunk_accum);
+        flush_header(&mut file_accum, &mut hunk_header, &mut hunk_accum);
 
         Ok(ret)
     };
