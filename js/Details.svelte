@@ -1,8 +1,28 @@
 <script>
-    export let message;
+    import Editor from "./Editor.svelte";
+    export let commit;
+    export let meta = {};
+    export let message = [];
 </script>
 
 <div class="details">
+    {#if commit}
+        <div style="font-familiy: monospace"><b>Commit: </b>{commit.hash}</div>
+        {#if meta.author}
+            <Editor caption="Author" editor={meta.author} date={meta.author.date}/>
+        {/if}
+        {#if meta.committer}
+            <Editor caption="Committer" editor={meta.committer} date={meta.committer.date}/>
+        {/if}
+        {#if meta.message}
+        <div style="font-familiy: monospace">
+            <pre>{meta.message}</pre>
+        </div>
+        {:else}
+        <p>{commit.message}</p>
+        {/if}
+    {/if}
+
     Hunks: {message.length}
 
     <div class="hunk" style="position: relative; text-align: center">

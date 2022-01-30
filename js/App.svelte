@@ -16,6 +16,9 @@
     let branches = [];
     let selectedBranch = null;
 
+    let selectedCommit = null;
+    let detailMeta = {};
+
     let showToolTip = false;
     let tipMeta = {};
     let tipDiff = "";
@@ -50,7 +53,7 @@
                         showCommit: setTipCommit,
                         showMeta: setTipMeta,
                         hideMessage: hideTipMessage,
-                        showDetails: aMessage => detailMessage = aMessage
+                        showDetails,
                     }
                 );
                 allCommits = gitgraph.allCommits;
@@ -78,6 +81,25 @@
 
     function hideTipMessage(){
         showToolTip = false;
+    }
+
+    function showDetails(commit) {
+        if(commit.parents.length === 0)
+            return;
+
+        detailMeta = {};
+        detailMessage = [];
+
+        fetch(`/commits/${commit.hash}/meta`)
+            .then(resp => resp.json())
+            .then(meta => detailMeta = meta);
+
+        fetch(`/diff/${commit.parents[0]}/${commit.hash}`)
+            .then(resp => resp.json())
+            .then(message => {
+                selectedCommit = commit;
+                detailMessage = message;
+            });
     }
 
     function scrollHandle(){
@@ -112,13 +134,18 @@
                         showCommit: setTipCommit,
                         showMeta: setTipMeta,
                         hideMessage: hideTipMessage,
-                        showDetails: (aMessage) => detailMessage = aMessage,
+                        showDetails,
                     }, graphWidth);
                     pendingFetch = false;
                     console.log(`Pending fetch for ${gitgraph.lastCommits[0]} ended`);
                 });
             }
         }
+    }
+
+    function selectCommit(commit){
+        selectedCommit = commit;
+        showDetails(commit);
     }
 
     let graphElem;
@@ -147,8 +174,9 @@
 
     <div class="messages" style="left: {graphWidth}px">
         {#each allCommits as commit, index}
-            <div class={index % 2 === 0 ? 'light' : 'dark'}
-                style="position: absolute; left: 0px; top:{index * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: {rowHeight}px">
+            <div class={selectedCommit === commit ? 'selected' : index % 2 === 0 ? 'light' : 'dark'}
+                style="position: absolute; left: 0px; top:{index * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: {rowHeight}px"
+                on:click={selectCommit(commit)}>
                 <span class="valign" id={commit.hash}>
                     {commit.hash.substr(0, 6)} {commit.message}
                 </span>
@@ -157,7 +185,7 @@
     </div>
 </div>
 
-<Details message={detailMessage}/>
+<Details commit={selectedCommit} meta={detailMeta} message={detailMessage}/>
 
 {#if showToolTip}
 <ToolTip {tipCommit} {tipLeft} {tipTop} {tipMeta} {tipDiff}/>
@@ -178,5 +206,16 @@
         width: 100%;
         height: 40%;
         overflow-y: scroll;
-	}
+    }
+    .selected{
+        background-color: #ffffff;
+        border: solid 2px #0000ff;
+        margin: -4px;
+    }
+    .dark{
+        background-color: #cfcfcf;
+    }
+    .light{
+        background-color: #efefef;
+    }
 </style>

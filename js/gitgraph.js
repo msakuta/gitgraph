@@ -285,11 +285,6 @@ export class GitGraph{
                 const rect = group.getBoundingClientRect();
                 showCommit(commit, rect.right - graphRect.left, rect.top - graphRect.top);
 
-                function formatEdit(editor, caption){
-                    const date = new Date(editor.date * 1000);
-                    return `<div><b>${caption}:</b> ${editor.name} &lt;${editor.email}&gt; ${date.toLocaleString()}</div>`;
-                }
-
                 fetch(`/commits/${commit.hash}/meta`)
                     .then(resp => resp.json())
                     .then(meta => showMeta(meta));
@@ -297,13 +292,9 @@ export class GitGraph{
                     fetch(`/diff_stats/${commit.parents[0]}/${commit.hash}`)
                         .then(resp => resp.text())
                         .then(text => showDiffStats(text));
-                    fetch(`/diff/${commit.parents[0]}/${commit.hash}`)
-                        .then(resp => resp.json())
-                        .then(message => {
-                            showDetails(message);
-                        });
                 }
             });
+            group.addEventListener("click", () => showDetails(commit));
             group.addEventListener("mouseleave", () => hideMessage());
             svg.appendChild(group);
             commit.svgGroup = group;
