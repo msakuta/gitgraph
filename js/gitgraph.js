@@ -237,9 +237,7 @@ export class GitGraph{
         }
     };
 
-    updateSvg(svg, commits=undefined, yOffset=0, showDetails=()=>{}){
-        let width = 0;
-
+    updateSvg(svg, commits=undefined, yOffset=0, showDetails=()=>{}, width=0){
         const colors = ['#7f0000', '#007f00', '#0000af', '#000000',
             '#7f7f00', '#7f007f', '#007f7f'];
 
