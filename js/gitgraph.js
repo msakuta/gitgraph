@@ -344,14 +344,16 @@ export class GitGraph{
         this.lastCommits = 0 < commits.length ? this.columns.filter(c => c) : [];
 
         // Recalculate width by SVG content
-        width = Math.ceil(width)
+        width = Math.ceil(width);
+
+        this.bgGroup.setAttribute("transform", `scale(${width}, 1)`);
 
         for(var i = 0; i < commits.length; i++){
             const index = i + yOffset;
             var bg = document.createElementNS(NS,"rect")
             bg.setAttribute('x', 0)
             bg.setAttribute('y', index * rowHeight - rowHeight / 2 + rowOffset)
-            bg.setAttribute('width', width)
+            bg.setAttribute('width', 1)
             bg.setAttribute('height', rowHeight)
             bg.setAttribute('class', index % 2 === 0 ? 'lightFill' : 'darkFill')
             this.bgGroup.appendChild(bg)
