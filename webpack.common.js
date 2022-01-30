@@ -1,10 +1,22 @@
 const path = require('path')
 
 module.exports = {
-  entry: './js/gitgraph.js',
+  entry: './js/index.js',
   mode: "development",
   resolve: {
-    extensions: [ '.tsx', '.ts', '.js' ],
+    alias: {
+      svelte: path.resolve('node_modules', 'svelte')
+    },
+    extensions: [ '.tsx', '.ts', '.js', '.svelte' ],
+    mainFields: ['svelte', 'browser', 'module', 'main']
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(html|svelte)$/,
+        use: 'svelte-loader'
+      }
+    ]
   },
   output: {
     filename: 'bundle.js',

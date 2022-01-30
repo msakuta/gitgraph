@@ -7,7 +7,7 @@ use crate::{
         get_commits, get_commits_hash, get_commits_multi, get_commits_session, get_message,
         get_meta,
     },
-    diff::{get_diff_stats, get_diff_summary},
+    diff::{get_diff, get_diff_stats, get_diff_summary},
     sessions::{Session, SessionId},
 };
 #[cfg(debug_assertions)]
@@ -195,6 +195,7 @@ async fn main() -> std::io::Result<()> {
             .route("/refs", web::get().to(get_refs))
             .service(get_diff_summary)
             .service(get_diff_stats)
+            .service(get_diff)
             .route(
                 "/js/bundle.js",
                 web::get().to(get_static_file!("../dist/bundle.js", "text/javascript")),

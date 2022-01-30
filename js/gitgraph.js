@@ -88,9 +88,10 @@ export class GitGraph{
     tipDiffElem = null;
     bgGroup = null;
     columns = [];
+    svg = null;
 
-    constructor(){
-        $(window).scroll(() => this.scrollHandle());
+    constructor(svg){
+        this.svg = svg;
 
         this.tipElem = document.createElement("div");
         this.tipElem.style.padding = "0.5em";
@@ -235,9 +236,8 @@ export class GitGraph{
         }
     };
 
-    updateSvg(svg, commentElem, commits=undefined, yOffset=0){
-        var width = parseInt(svg.style.width);
-        var height = parseInt(svg.style.height);
+    updateSvg(svg, commits=undefined, yOffset=0, showDetails=()=>{}){
+        let width = 0;
 
         const colors = ['#7f0000', '#007f00', '#0000af', '#000000',
             '#7f7f00', '#7f007f', '#007f7f'];
@@ -354,6 +354,11 @@ export class GitGraph{
                         .then(text => {
                             this.tipDiffElem.innerHTML = `<pre>${text}</pre>`;
                         });
+                    fetch(`/diff/${commit.parents[0]}/${commit.hash}`)
+                        .then(resp => resp.json())
+                        .then(message => {
+                            showDetails(message);
+                        });
                 }
             });
             group.addEventListener("mouseleave", () => this.tipElem.style.display = "none");
@@ -398,14 +403,14 @@ export class GitGraph{
                 refx += t.getBBox().width + 15
             }
 
-            if(svg.getBoundingClientRect().width < refx)
-                svg.style.width = Math.ceil(refx) + 'px'
+            if(width < refx)
+                width = Math.ceil(refx);
         }
 
         this.lastCommits = 0 < commits.length ? this.columns.filter(c => c) : [];
 
         // Recalculate width by SVG content
-        width = Math.ceil(svg.getBoundingClientRect().width)
+        width = Math.ceil(width)
 
         for(var i = 0; i < commits.length; i++){
             const index = i + yOffset;
@@ -420,88 +425,21 @@ export class GitGraph{
 
         svg.style.height = ((this.allCommits.length) * rowHeight + rowOffset) + 'px'
 
-        if(commentElem)
-            commentElem.style.left = width + 'px'
+        return width;
     }
 
-    scrollHandle(){
-        const scrollBottom = $(window).scrollTop() + document.documentElement.clientHeight;
-        // console.log(`scrollBottom ${scrollBottom}/${document.body.scrollHeight}`);
-        if(document.body.scrollHeight <= scrollBottom){
-            if(!this.pendingFetch && this.lastCommits.length !== 0 && this.sessionId){
-                this.pendingFetch = true;
-                console.log(`Pending fetch for ${this.lastCommits[0]} started`);
-                fetch("/sessions", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        session_id: this.sessionId,
-                    }),
-                })
-                .then((resp) => {
-                    if(!resp.ok){
-                        throw new Error(`HTTP error! status: ${resp.status}`);
-                    }
-                    return resp.json();
-                })
-                .then(json => {
-                    const commits = json.filter(item =>
-                        this.lastCommits.indexOf(item.hash) !== -1 || !this.commitMap.hasOwnProperty(item.hash));
-                    const yOffset = this.allCommits.length;
-                    this.renderLog(commits, yOffset);
-                    this.parseLog(commits);
-                    this.updateSvg($("#graph")[0], $('#commits')[0], commits, yOffset);
-                    this.pendingFetch = false;
-                    console.log(`Pending fetch for ${this.lastCommits[0]} ended`);
-                });
-            }
+    newSession(commits, session, showDetails){
+        const svg = this.svg;
+        while(svg.firstChild){
+            svg.removeChild(svg.firstChild);
         }
+        this.reset();
+        this.sessionId = session;
+        // this.renderLog(commits)
+        this.parseLog(commits);
+        this.updateRefs()
+        return this.updateSvg(svg, undefined, undefined, showDetails);
     }
 
     pendingFetch = false;
 }
-
-export var gitgraph = new GitGraph();
-
-function newSession(commits, session){
-    gitgraph.sessionId = session;
-    gitgraph.renderLog(commits)
-    gitgraph.parseLog(commits, $('#commits')[0])
-    gitgraph.updateRefs()
-    var svg = document.getElementById("graph")
-    gitgraph.updateSvg(svg, $('#commits')[0])
-}
-
-$(document).ready(function(){
-    var commitsAjax = $.get("commit-query")
-    var refsAjax = $.get("refs")
-    $.when(commitsAjax, refsAjax)
-    .then(function(response, refs){
-        const {commits, session} = response[0];
-        gitgraph.refs = refs[0];
-        const branchElem = $("#branch")[0];
-        if(branchElem){
-            for(const ref in refs[0]){
-                const optionElem = document.createElement("option");
-                optionElem.innerHTML = ref;
-                branchElem.appendChild(optionElem);
-            }
-            branchElem.addEventListener("change", event => {
-                console.log(`changed: ${event.target.value}`);
-                const svg = $("#graph")[0];
-                while(svg.firstChild){
-                    svg.removeChild(svg.firstChild);
-                }
-                const commitsElem = $("#commits")[0];
-                while(commitsElem.firstChild){
-                    commitsElem.removeChild(commitsElem.firstChild);
-                }
-                gitgraph.reset();
-                fetch(`/commit-query/${event.target.value}`)
-                    .then(resp => resp.json())
-                    .then(({commits, session}) => newSession(commits, session));
-            });
-        }
-        newSession(commits, session);
-    });
-});
