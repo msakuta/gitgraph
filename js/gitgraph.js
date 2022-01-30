@@ -94,6 +94,7 @@ export class GitGraph{
         this.svg = svg;
 
         this.tipElem = document.createElement("div");
+        this.tipElem.style.display = "none";
         this.tipElem.style.padding = "0.5em";
         this.tipElem.style.backgroundColor = "#cfcf9f";
         this.tipElem.style.border = "solid 2px #3f3fff";

@@ -10,8 +10,8 @@
     let graphWidth = 100;
 
     let svg = null;
-    let gitgraph = null;
-    $: gitgraph = new GitGraph(svg);
+    let gitgraph = new GitGraph(svg);
+    $: gitgraph.svg = svg;
 
     let branches = [];
 
