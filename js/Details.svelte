@@ -2,7 +2,7 @@
     import Editor from "./Editor.svelte";
     export let commit;
     export let meta = {};
-    export let message = [];
+    export let hunks = [];
 </script>
 
 <div class="details">
@@ -23,13 +23,13 @@
         {/if}
     {/if}
 
-    Hunks: {message.length}
+    Hunks: {hunks.length}
 
     <div class="hunk" style="position: relative; text-align: center">
-        {#each message as row, i}
+        {#each hunks as hunk}
             <div style="text-align: left; background-color: #ffffcf; margin: 4px">
                 <pre>
-                    {row}
+                    {hunk}
                 </pre>
             </div>
         {/each}

@@ -66,7 +66,7 @@
     let pendingFetch = null;
     let commitMap = {};
     let allCommits = [];
-    let detailMessage = [];
+    let detailHunks = [];
 
     function setTipCommit(commit, left, top){
         showToolTip = true;
@@ -93,7 +93,7 @@
             return;
 
         detailMeta = {};
-        detailMessage = [];
+        detailHunks = [];
 
         fetch(`/commits/${commit.hash}/meta`)
             .then(resp => resp.json())
@@ -101,9 +101,9 @@
 
         fetch(`/diff/${commit.parents[0]}/${commit.hash}`)
             .then(resp => resp.json())
-            .then(message => {
+            .then(diffHunks => {
                 selectedCommit = commit;
-                detailMessage = message;
+                detailHunks = diffHunks;
             });
     }
 
@@ -191,7 +191,7 @@
     </div>
 </div>
 
-<Details commit={selectedCommit} meta={detailMeta} message={detailMessage}/>
+<Details commit={selectedCommit} meta={detailMeta} hunks={detailHunks}/>
 
 {#if showToolTip}
 <ToolTip {tipCommit} {tipLeft} {tipTop} {tipMeta} {tipDiffStats}/>

@@ -58,15 +58,18 @@ pub(crate) async fn get_diff(
         let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
 
         let mut ret = vec![];
-        let mut buf = String::new();
         let mut hunk_header: Option<(PathBuf, String)> = None;
         let mut hunk_accum = String::new();
 
-        let mut flush_header = |hunk_header: &mut Option<(PathBuf, String)>, buf: &mut String| {
-            if let Some((path, header)) = std::mem::take(hunk_header) {
-                ret.push(std::mem::take(buf));
-                *buf = format!("Path: {}\n{}", path.to_str().unwrap_or(""), header);
-                *hunk_header = None;
+        let mut flush_header = |hunk_header: &mut Option<(PathBuf, String)>,
+                                hunk_accum: &mut String| {
+            if let Some((path, _header)) = std::mem::take(hunk_header) {
+                ret.push(format!(
+                    "Path: {}\n{}",
+                    path.to_str().unwrap_or(""),
+                    hunk_accum
+                ));
+                hunk_accum.clear();
             }
         };
 
@@ -82,20 +85,7 @@ pub(crate) async fn get_diff(
                         .map(|h: &(PathBuf, String)| h.0 != path || h.1 != header)
                         .unwrap_or(true)
                     {
-                        flush_header(&mut hunk_header, &mut buf);
-                        // buf += &format!("file: {}\n{}\n{}", path);
-                        // if let Some((ref prev_path, ref prev_header)) = hunk_header {
-                        //     if let Some(path) = if prev_path != path {
-                        //         path.to_str()
-                        //     } else {
-                        //         None
-                        //     } {
-                        //         buf += &format!("file: {}\n{}\n{}", path, prev_header, hunk_accum);
-                        //     } else {
-                        //         buf += &format!("{}\n{}", prev_header, hunk_accum);
-                        //     }
-                        //     hunk_accum.clear();
-                        // }
+                        flush_header(&mut hunk_header, &mut hunk_accum);
                         hunk_header = Some((path.to_owned(), header.to_owned()));
                     }
                     hunk_accum += &format!(
@@ -108,14 +98,12 @@ pub(crate) async fn get_diff(
                             .unwrap_or_else(|| "    ".to_string()),
                         content
                     );
-                    buf += &hunk_accum;
-                    hunk_accum.clear();
                 }
             }
             true
         })?;
 
-        flush_header(&mut hunk_header, &mut buf);
+        flush_header(&mut hunk_header, &mut hunk_accum);
 
         Ok(ret)
     };
