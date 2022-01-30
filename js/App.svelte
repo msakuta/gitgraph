@@ -1,5 +1,4 @@
 <script>
-    import _$ from "jquery";
     import { GitGraph } from "./gitgraph";
     import Details from "./Details.svelte";
 
@@ -17,12 +16,10 @@
     let selectedBranch = null;
 
     function getRefs(){
-        var commitsAjax = _$.get("commit-query")
-        var refsAjax = _$.get("refs")
-        _$.when(commitsAjax, refsAjax)
-        .then(function(response, refs){
-            const {commits, session} = response[0];
-            for(const ref in refs[0]){
+        fetch("refs")
+        .then(resp => resp.json())
+        .then(refs => {
+            for(const ref in refs){
                 branches.push(ref);
             }
             branches = branches;
@@ -53,7 +50,7 @@
     let message = [];
 
     function scrollHandle(){
-        const scrollBottom = _$(graphElem).scrollTop() + graphElem.clientHeight;
+        const scrollBottom = graphElem.scrollTop + graphElem.clientHeight;
         // console.log(`scrollBottom ${scrollBottom}/${graphElem.scrollHeight}`);
         if(graphElem.scrollHeight <= scrollBottom){
             // console.log(`fetch chance ${gitgraph.lastCommits}`);
@@ -90,7 +87,7 @@
 
     let graphElem;
 
-    $: _$(graphElem).scroll(scrollHandle);
+    $: if(graphElem) graphElem.addEventListener("scroll", scrollHandle);
 
     getRefs();
 </script>

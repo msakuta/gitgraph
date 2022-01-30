@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 const NS="http://www.w3.org/2000/svg";
 const columnOffset = 20;
 const columnWidth = 15;
@@ -108,7 +106,7 @@ export class GitGraph{
         this.tipElem.appendChild(this.tipMessageElem);
         this.tipDiffElem = document.createElement("div");
         this.tipElem.appendChild(this.tipDiffElem);
-        $("#graphContainer")[0].appendChild(this.tipElem);
+        document.getElementById("graphContainer").appendChild(this.tipElem);
     }
 
     reset(){
@@ -142,29 +140,6 @@ export class GitGraph{
         a.setAttribute("d", str);
         return maxX
     }
-
-    renderLog(commits, yOffset=0){
-        const text = commits.reduce((acc, cur, i) => {
-            const index = i + yOffset;
-            if(cur){
-                return acc + `<div class="${index % 2 === 0 ? 'light' : 'dark'}"
-            style="position: absolute; top:${index * rowHeight - rowHeight / 2 + rowOffset}px; width: 100%; height: ${rowHeight}px">
-            <span class="valign" id="${cur.hash}">${cur.hash.substr(0, 6)} ${
-                cur.stat ? `
-                <span class="insertions">+${cur.stat.insertions}</span>
-                <span class="deletions">-${cur.stat.deletions}</span>`
-                : ""
-                }
-                ${cur.message}
-            </span></div>`;
-            }
-            else{
-                return acc;
-            }
-        }, "");
-        $("#commits")[0].innerHTML += text;
-    }
-
 
     /** Parse raw output from `git log --pretty=raw --numstat` and format for HTML
      */
@@ -321,7 +296,7 @@ export class GitGraph{
                 }
                 this.tipHashElem.innerHTML = `<b>Commit</b> ${commit.hash}`;
                 this.tipMessageElem.innerHTML = commit.message;
-                const graphRect = $("#graphContainer")[0].getBoundingClientRect();
+                const graphRect = document.getElementById("graphContainer").getBoundingClientRect();
                 const rect = group.getBoundingClientRect();
                 this.tipElem.style.left = `${rect.right - graphRect.left}px`;
                 this.tipElem.style.top = `${rect.top - graphRect.top}px`;
@@ -434,7 +409,6 @@ export class GitGraph{
         }
         this.reset();
         this.sessionId = session;
-        // this.renderLog(commits)
         this.parseLog(commits);
         this.updateRefs()
         return this.updateSvg(svg, undefined, undefined, showDetails);

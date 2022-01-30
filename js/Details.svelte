@@ -1,5 +1,4 @@
 <script>
-    import _$ from "jquery";
     export let message;
 </script>
 

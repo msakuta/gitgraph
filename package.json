@@ -4,7 +4,6 @@
     "start": "webpack-dev-server --config webpack.dev.js"
   },
   "dependencies": {
-    "jquery": "^3.6.0",
     "svelte": "^3.46.3",
     "svelte-loader": "^3.1.2",
     "webpack": "^5.66.0",
