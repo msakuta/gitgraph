@@ -1,6 +1,7 @@
 <script>
     import { GitGraph } from "./gitgraph";
     import Details from "./Details.svelte";
+    import ToolTip from "./ToolTip.svelte";
 
     const columnOffset = 20;
     const columnWidth = 15;
@@ -14,6 +15,13 @@
 
     let branches = [];
     let selectedBranch = null;
+
+    let showToolTip = false;
+    let tipMeta = {};
+    let tipDiff = "";
+    let tipCommit = "";
+    let tipLeft = 0;
+    let tipTop = 0;
 
     function getRefs(){
         fetch("refs")
@@ -37,7 +45,14 @@
         fetch(`/commit-query/${branch}`)
             .then(resp => resp.json())
             .then(({commits, session}) => {
-                graphWidth = gitgraph.newSession(commits, session, aMessage => message = aMessage);
+                graphWidth = gitgraph.newSession(commits, session,
+                    {
+                        showCommit: setTipCommit,
+                        showMeta: setTipMeta,
+                        hideMessage: hideTipMessage,
+                        showDetails: aMessage => detailMessage = aMessage
+                    }
+                );
                 allCommits = gitgraph.allCommits;
             });
     }
@@ -47,7 +62,23 @@
     let pendingFetch = null;
     let commitMap = {};
     let allCommits = [];
-    let message = [];
+    let detailMessage = [];
+
+    function setTipCommit(commit, left, top){
+        showToolTip = true;
+        tipCommit = commit;
+        tipLeft = left;
+        tipTop = top;
+        console.log(`tip: ${tipLeft} ${tipTop}`)
+    }
+
+    function setTipMeta(meta){
+        tipMeta = meta;
+    }
+
+    function hideTipMessage(){
+        showToolTip = false;
+    }
 
     function scrollHandle(){
         const scrollBottom = graphElem.scrollTop + graphElem.clientHeight;
@@ -77,7 +108,12 @@
                     // this.renderLog(commits, yOffset);
                     gitgraph.parseLog(commits);
                     allCommits = gitgraph.allCommits;
-                    graphWidth = gitgraph.updateSvg(svg, commits, yOffset, (aMessage) => message = aMessage, graphWidth);
+                    graphWidth = gitgraph.updateSvg(svg, commits, yOffset, {
+                        showCommit: setTipCommit,
+                        showMeta: setTipMeta,
+                        hideMessage: hideTipMessage,
+                        showDetails: (aMessage) => detailMessage = aMessage,
+                    }, graphWidth);
                     pendingFetch = false;
                     console.log(`Pending fetch for ${gitgraph.lastCommits[0]} ended`);
                 });
@@ -121,8 +157,11 @@
     </div>
 </div>
 
-<Details message={message}/>
+<Details message={detailMessage}/>
 
+{#if showToolTip}
+<ToolTip {tipCommit} {tipLeft} {tipTop} {tipMeta} {tipDiff}/>
+{/if}
 
 <style>
     .headerContainer{
