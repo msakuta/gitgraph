@@ -20,7 +20,7 @@ use crate::{
 // use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use axum::{
     extract::State,
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{Html, IntoResponse, Json, Response},
     routing::{get, post},
     Router,
@@ -90,36 +90,35 @@ struct ServerState {
     sessions: Mutex<HashMap<SessionId, Session>>,
 }
 
-// #[cfg(debug_assertions)]
-// macro_rules! get_static_file {
-//     ($file:expr, $_mime_type:expr) => {{
-//         async fn f() -> actix_web::Result<NamedFile> {
-//             (|| -> anyhow::Result<NamedFile> {
-//                 let path = if &$file[..3] == "../" {
-//                     &$file[3..]
-//                 } else {
-//                     $file
-//                 };
-//                 let abs_path = std::env::current_dir()?.join(path);
-//                 println!("path: {:?}", abs_path);
-//                 Ok(NamedFile::open(abs_path)?)
-//             })()
-//             .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
-//         }
-//         f
-//     }};
-// }
+#[cfg(debug_assertions)]
+macro_rules! get_static_file {
+    ($file:expr, $_mime_type:expr) => {{
+        async fn f() -> Result<String, AnyhowError> {
+            Ok((|| -> anyhow::Result<String> {
+                let path = if &$file[..3] == "../" {
+                    &$file[3..]
+                } else {
+                    $file
+                };
+                let abs_path = std::env::current_dir()?.join(path);
+                println!("path: {:?}", abs_path);
+                let content = std::fs::read_to_string(abs_path)?;
+                Ok(content)
+            })()?)
+        }
+        f
+    }};
+}
 
-// #[cfg(not(debug_assertions))]
-// macro_rules! get_static_file {
-//     ($file:expr, $mime_type:expr) => {
-//         || async {
-//             HttpResponse::Ok()
-//                 .content_type($mime_type)
-//                 .body(include_str!($file))
-//         }
-//     };
-// }
+#[cfg(not(debug_assertions))]
+macro_rules! get_static_file {
+    ($file:expr, $mime_type:expr) => {{
+        async fn f() -> impl IntoResponse {
+            ([(header::CONTENT_TYPE, $mime_type)], include_str!($file))
+        }
+        f
+    }};
+}
 
 // async fn get_refs(data: web::Data<ServerState>) -> HttpResponse {
 //     if let Ok(repo) = Repository::open(&data.settings.repo) {
@@ -306,8 +305,10 @@ async fn main() -> std::io::Result<()> {
         .route("/diff_summary/:id1/:id2", get(get_diff_summary))
         .route("/diff/:id1/:id2", get(get_diff))
         .route("/commits/:id/meta", get(get_meta))
-        // `POST /users` goes to `create_user`
-        // .route("/users", post(create_user))
+        .route(
+            "/js/bundle.js",
+            get(get_static_file!("../dist/bundle.js", "text/javascript")),
+        )
         .with_state(data);
 
     // run our app with hyper, listening globally on port 3000
