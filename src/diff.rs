@@ -1,14 +1,39 @@
+use std::sync::Arc;
+
 use crate::{AnyhowError, ServerState};
-use actix_web::{get, http, web, HttpResponse, Responder};
+// use actix_web::{get, http, web, HttpResponse, Responder};
 use anyhow::Result;
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use git2::{DiffStatsFormat, Oid, Repository};
 use serde::Serialize;
 
-#[get("/diff_summary/{commit_a}/{commit_b}")]
+// #[get("/diff_summary/{commit_a}/{commit_b}")]
+// pub(crate) async fn get_diff_summary(
+//     data: web::Data<ServerState>,
+//     web::Path((commit_a, commit_b)): web::Path<(String, String)>,
+// ) -> std::result::Result<impl Responder, AnyhowError> {
+//     let get_diff_int = || -> Result<git2::DiffStats> {
+//         let repo = Repository::open(&data.settings.repo)?;
+//         let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
+//         let commit_b = repo.find_commit(Oid::from_str(&commit_b)?)?.tree()?;
+//         let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
+//         Ok(diff.stats()?)
+//     };
+//     let stats = get_diff_int()?;
+//     Ok(HttpResponse::Ok()
+//         .content_type("application/json")
+//         // Keep cache for 1 week since git hash guarantees uniqueness
+//         .header(http::header::CACHE_CONTROL, "max-age=604800")
+//         .body(format!("[{},{}]", stats.insertions(), stats.deletions())))
+// }
+
 pub(crate) async fn get_diff_summary(
-    data: web::Data<ServerState>,
-    web::Path((commit_a, commit_b)): web::Path<(String, String)>,
-) -> std::result::Result<impl Responder, AnyhowError> {
+    State(data): State<Arc<ServerState>>,
+    Path((commit_a, commit_b)): Path<(String, String)>,
+) -> std::result::Result<Json<String>, AnyhowError> {
     let get_diff_int = || -> Result<git2::DiffStats> {
         let repo = Repository::open(&data.settings.repo)?;
         let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
@@ -17,46 +42,45 @@ pub(crate) async fn get_diff_summary(
         Ok(diff.stats()?)
     };
     let stats = get_diff_int()?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
+    Ok(
         // Keep cache for 1 week since git hash guarantees uniqueness
-        .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .body(format!("[{},{}]", stats.insertions(), stats.deletions())))
+        // .header(http::header::CACHE_CONTROL, "max-age=604800")
+        Json(format!("[{},{}]", stats.insertions(), stats.deletions())),
+    )
 }
 
-#[get("/diff_stats/{commit_a}/{commit_b}")]
-pub(crate) async fn get_diff_stats(
-    data: web::Data<ServerState>,
-    web::Path((commit_a, commit_b)): web::Path<(String, String)>,
-) -> std::result::Result<impl Responder, AnyhowError> {
-    let get_diff_int = || -> Result<_> {
-        let repo = Repository::open(&data.settings.repo)?;
-        let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
-        let commit_b = repo.find_commit(Oid::from_str(&commit_b)?)?.tree()?;
-        let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
-        let diff_stats = diff.stats()?;
-        let buf = diff_stats.to_buf(DiffStatsFormat::FULL, 80)?;
-        Ok(buf.to_owned())
-    };
-    let buf = get_diff_int()?;
-    Ok(HttpResponse::Ok()
-        .content_type("text/plain")
-        // Keep cache for 1 week since git hash guarantees uniqueness
-        .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .body(buf))
-}
+// #[get("/diff_stats/{commit_a}/{commit_b}")]
+// pub(crate) async fn get_diff_stats(
+//     data: web::Data<ServerState>,
+//     web::Path((commit_a, commit_b)): web::Path<(String, String)>,
+// ) -> std::result::Result<impl Responder, AnyhowError> {
+//     let get_diff_int = || -> Result<_> {
+//         let repo = Repository::open(&data.settings.repo)?;
+//         let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
+//         let commit_b = repo.find_commit(Oid::from_str(&commit_b)?)?.tree()?;
+//         let diff = repo.diff_tree_to_tree(Some(&commit_a), Some(&commit_b), None)?;
+//         let diff_stats = diff.stats()?;
+//         let buf = diff_stats.to_buf(DiffStatsFormat::FULL, 80)?;
+//         Ok(buf.to_owned())
+//     };
+//     let buf = get_diff_int()?;
+//     Ok(HttpResponse::Ok()
+//         .content_type("text/plain")
+//         // Keep cache for 1 week since git hash guarantees uniqueness
+//         .header(http::header::CACHE_CONTROL, "max-age=604800")
+//         .body(buf))
+// }
 
 #[derive(Serialize, Debug)]
-struct FileDiff {
+pub(crate) struct FileDiff {
     file: String,
     hunks: Vec<String>,
 }
 
-#[get("/diff/{commit_a}/{commit_b}")]
 pub(crate) async fn get_diff(
-    data: web::Data<ServerState>,
-    web::Path((commit_a, commit_b)): web::Path<(String, String)>,
-) -> std::result::Result<impl Responder, AnyhowError> {
+    State(data): State<Arc<ServerState>>,
+    Path((commit_a, commit_b)): Path<(String, String)>,
+) -> Result<Json<Vec<FileDiff>>, AnyhowError> {
     let get_diff_int = || -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
         let commit_a = repo.find_commit(Oid::from_str(&commit_a)?)?.tree()?;
@@ -67,8 +91,12 @@ pub(crate) async fn get_diff(
         let mut hunk_header: Option<(String, String)> = None;
         let mut hunk_accum = String::new();
         let mut file_accum = None;
+        let mut lines = 0;
 
-        fn is_new_file(file_accum: &Option<FileDiff>, hunk_header: &Option<(String, String)>) -> bool {
+        fn is_new_file(
+            file_accum: &Option<FileDiff>,
+            hunk_header: &Option<(String, String)>,
+        ) -> bool {
             let file_accum = if let Some(file_accum) = file_accum {
                 file_accum
             } else {
@@ -82,7 +110,8 @@ pub(crate) async fn get_diff(
             file_accum.file != hunk_header.0
         }
 
-        let mut flush_header = |file_accum: &mut Option<FileDiff>, hunk_header: &mut Option<(String, String)>,
+        let mut flush_header = |file_accum: &mut Option<FileDiff>,
+                                hunk_header: &mut Option<(String, String)>,
                                 hunk_accum: &mut String| {
             if let Some(hunk_header) = std::mem::take(hunk_header) {
                 if is_new_file(&file_accum, &Some(hunk_header)) {
@@ -98,9 +127,10 @@ pub(crate) async fn get_diff(
         };
 
         diff.print(git2::DiffFormat::Patch, |delta, hunk, line| {
+            lines += 1;
             if file_accum.is_none() {
                 if let Some(file) = delta.new_file().path().and_then(|s| s.to_str()) {
-                    file_accum = Some(FileDiff{
+                    file_accum = Some(FileDiff {
                         file: file.to_owned(),
                         hunks: vec![],
                     })
@@ -120,7 +150,7 @@ pub(crate) async fn get_diff(
                         flush_header(&mut file_accum, &mut hunk_header, &mut hunk_accum);
                         hunk_header = Some((path.to_owned(), header.to_owned()));
                     }
-                    hunk_accum += &format!(
+                    let line = format!(
                         " {} {} {}",
                         line.old_lineno()
                             .map(|l| format!("{:>4}", l))
@@ -130,6 +160,13 @@ pub(crate) async fn get_diff(
                             .unwrap_or_else(|| "    ".to_string()),
                         content
                     );
+                    print!(
+                        "{} {}: {}",
+                        path,
+                        is_new_file(&file_accum, &hunk_header),
+                        line
+                    );
+                    hunk_accum += &line;
                 }
             }
             true
@@ -137,12 +174,14 @@ pub(crate) async fn get_diff(
 
         flush_header(&mut file_accum, &mut hunk_header, &mut hunk_accum);
 
+        println!("lines: {}", lines);
+
         Ok(ret)
     };
     let ret = get_diff_int()?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
+    Ok(
         // Cache is annoying for debugging for now
         // .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .json(ret))
+        Json(ret),
+    )
 }

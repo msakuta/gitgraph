@@ -1,16 +1,21 @@
+use std::sync::Arc;
+
 use super::map_err;
-use crate::ServerState;
-use actix_web::{get, http, web, HttpResponse, Responder};
+use crate::{AnyhowError, ServerState};
+// use actix_web::{get, http, web, HttpResponse, Responder};
 use anyhow::Result;
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use git2::{Oid, Repository, Signature};
 use serde::Serialize;
 use serde_json::json;
 
-#[get("/commits/{commit}/message")]
 pub(crate) async fn get_message(
-    data: web::Data<ServerState>,
-    web::Path(commit): web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+    State(data): State<Arc<ServerState>>,
+    Path(commit): Path<String>,
+) -> Result<Json<String>, AnyhowError> {
     let message = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
         let commit = repo.find_commit(Oid::from_str(&commit)?)?;
@@ -20,11 +25,11 @@ pub(crate) async fn get_message(
             .ok_or(anyhow::anyhow!("Missing message"))
     })()
     .map_err(map_err)?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
+    Ok(
         // Keep cache for 1 week since git hash guarantees uniqueness
-        .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .body(message))
+        // .header(http::header::CACHE_CONTROL, "max-age=604800")
+        Json(message),
+    )
 }
 
 #[derive(Serialize)]
@@ -45,17 +50,16 @@ impl From<Signature<'_>> for EditStamp {
 }
 
 #[derive(Serialize)]
-struct MetaResponse {
+pub(crate) struct MetaResponse {
     author: EditStamp,
     committer: EditStamp,
     message: String,
 }
 
-#[get("/commits/{commit}/meta")]
 pub(crate) async fn get_meta(
-    data: web::Data<ServerState>,
-    web::Path(commit): web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+    State(data): State<Arc<ServerState>>,
+    Path(commit): Path<String>,
+) -> Result<Json<MetaResponse>, AnyhowError> {
     let signature = (|| -> Result<_> {
         let repo = Repository::open(&data.settings.repo)?;
         let commit = repo.find_commit(Oid::from_str(&commit)?)?;
@@ -66,9 +70,9 @@ pub(crate) async fn get_meta(
         })
     })()
     .map_err(map_err)?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
+    Ok(
         // Keep cache for 1 week since git hash guarantees uniqueness
-        .header(http::header::CACHE_CONTROL, "max-age=604800")
-        .body(json!(signature)))
+        // .header(http::header::CACHE_CONTROL, "max-age=604800")
+        Json(signature),
+    )
 }
